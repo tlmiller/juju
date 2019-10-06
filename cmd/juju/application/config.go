@@ -47,6 +47,10 @@ option and will output the value as plain text. This is provided to support
 scripts where the output of "juju config <application name> <setting name>" 
 can be used as an input to an expression or a function.
 
+Key values prefixed with '@' are interpreted as a filename. The value is then
+read out of the named file. Values from files must be utf-8 encoded and no
+larger than 5Mb.
+
 Examples:
     juju config apache2
     juju config --format=json apache2
