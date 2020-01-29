@@ -19,6 +19,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/juju/juju/api"
 	"github.com/juju/juju/apiserver/params"
@@ -41,6 +42,51 @@ type bootstrapSuite struct {
 	pcfg          *podcfg.ControllerPodConfig
 
 	controllerStackerGetter func() provider.ControllerStackerForTest
+}
+
+type genericMatcher struct {
+	description string
+	matcher     func(interface{}) bool
+}
+
+func genericMatcherFn(description string, matcher func(interface{}) bool) *genericMatcher {
+	return &genericMatcher{
+		description: description,
+		matcher:     matcher,
+	}
+}
+
+func (g *genericMatcher) Matches(i interface{}) bool {
+	if g.matcher == nil {
+		return false
+	}
+	return g.matcher(i)
+}
+
+func (g *genericMatcher) String() string {
+	return g.description
+}
+
+func listOptionsFieldSelectorMatcher(fieldSelector string) gomock.Matcher {
+	return genericMatcherFn("is list options field",
+		func(i interface{}) bool {
+			lo, ok := i.(v1.ListOptions)
+			if !ok {
+				return false
+			}
+			return lo.FieldSelector == fieldSelector
+		})
+}
+
+func listOptionsLabelSelectorMatcher(labelSelector string) gomock.Matcher {
+	return genericMatcherFn("is list options label",
+		func(i interface{}) bool {
+			lo, ok := i.(v1.ListOptions)
+			if !ok {
+				return false
+			}
+			return lo.LabelSelector == labelSelector
+		})
 }
 
 var _ = gc.Suite(&bootstrapSuite{})
@@ -185,8 +231,8 @@ func (s *bootstrapSuite) TestBootstrap(c *gc.C) {
 	// Eventually the namespace wil be set to controllerName.
 	// So we have to specify the final namespace(controllerName) for later use.
 	newK8sRestClientFunc := s.setupK8sRestClient(c, ctrl, s.pcfg.ControllerName)
-	newK8sWatcherForTest := func(wi watch.Interface, name string, clock jujuclock.Clock) (*provider.KubernetesNotifyWatcher, error) {
-		w, err := provider.NewKubernetesNotifyWatcher(wi, name, clock)
+	newK8sWatcherForTest := func(informer cache.SharedIndexInformer, name string, clock jujuclock.Clock) (*provider.KubernetesNotifyWatcher, error) {
+		w, err := provider.NewKubernetesNotifyWatcher(informer, name, clock)
 		c.Assert(err, jc.ErrorIsNil)
 		<-w.Changes() // Consume initial event for testing.
 		s.watchers = append(s.watchers, w)
@@ -634,6 +680,7 @@ $JUJU_TOOLS_DIR/jujud machine --data-dir $JUJU_DATA_DIR --controller-id 0 --log-
 			},
 		},
 	}
+
 	eventsDone := &core.EventList{
 		Items: []core.Event{
 			{
@@ -748,54 +795,46 @@ $JUJU_TOOLS_DIR/jujud machine --data-dir $JUJU_DATA_DIR --controller-id 0 --log-
 		s.mockStorageClass.EXPECT().Get("some-storage", v1.GetOptions{}).
 			Return(&sc, nil),
 
-		// ensure statefulset.
+		s.mockPods.EXPECT().List(
+			listOptionsLabelSelectorMatcher("juju-app==juju-controller-test"),
+		).Return(&core.PodList{}, nil),
 		s.mockPods.EXPECT().Watch(
-			v1.ListOptions{
-				LabelSelector:        "juju-app==juju-controller-test",
-				Watch:                true,
-				IncludeUninitialized: true,
-			},
-		).
-			Return(podWatcher, nil),
+			listOptionsLabelSelectorMatcher("juju-app==juju-controller-test"),
+		).DoAndReturn(func(_ interface{}) (watch.Interface, error) {
+			podWatcher.Action(watch.Added, podReady)
+			return podWatcher, nil
+		}),
+
 		s.mockStatefulSets.EXPECT().Create(statefulSetSpec).
 			Return(statefulSetSpec, nil),
-		s.mockEvents.EXPECT().Watch(
-			v1.ListOptions{
-				FieldSelector: "involvedObject.name=controller-0,involvedObject.kind=Pod",
-				Watch:         true,
-			},
-		).
-			Return(eventWatcher, nil),
 		s.mockEvents.EXPECT().List(
-			v1.ListOptions{
-				IncludeUninitialized: true,
-				FieldSelector:        "involvedObject.name=controller-0,involvedObject.kind=Pod",
-			},
-		).
-			DoAndReturn(func(...interface{}) (*core.EventList, error) {
-				eventWatcher.Action(provider.StartedContainer, nil)
-				s.clock.WaitAdvance(time.Second, testing.ShortWait, 2)
-				return eventsPartial, nil
-			}),
+			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
+		).Return(&core.EventList{}, nil),
+		s.mockEvents.EXPECT().Watch(
+			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
+		).DoAndReturn(func(...interface{}) (watch.Interface, error) {
+			eventWatcher.Action(watch.Added, &eventsPartial.Items[0])
+			return eventWatcher, nil
+		}),
 
 		s.mockEvents.EXPECT().List(
-			v1.ListOptions{
-				IncludeUninitialized: true,
-				FieldSelector:        "involvedObject.name=controller-0,involvedObject.kind=Pod",
-			},
-		).
-			DoAndReturn(func(...interface{}) (*core.EventList, error) {
-				podWatcher.Action("PodStarted", nil)
-				s.clock.WaitAdvance(time.Second, testing.ShortWait, 2)
-				return eventsDone, nil
-			}),
+			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
+		).DoAndReturn(func(...interface{}) (*core.EventList, error) {
+			eventWatcher.Action(watch.Added, &eventsPartial.Items[0])
+			s.clock.WaitAdvance(time.Second, testing.ShortWait, 2)
+			return eventsPartial, nil
+		}),
+
 		s.mockEvents.EXPECT().List(
-			v1.ListOptions{
-				IncludeUninitialized: true,
-				FieldSelector:        "involvedObject.name=controller-0,involvedObject.kind=Pod",
-			},
-		).
-			Return(eventsDone, nil),
+			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
+		).DoAndReturn(func(...interface{}) (*core.EventList, error) {
+			podWatcher.Action(watch.Added, podReady)
+			s.clock.WaitAdvance(time.Second, testing.ShortWait, 2)
+			return eventsDone, nil
+		}),
+		s.mockEvents.EXPECT().List(
+			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
+		).Return(eventsDone, nil),
 		s.mockPods.EXPECT().Get("controller-0", v1.GetOptions{IncludeUninitialized: true}).
 			Return(podReady, nil),
 	)

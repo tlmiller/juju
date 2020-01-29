@@ -38,8 +38,10 @@ import (
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/juju/juju/caas"
 	k8sspecs "github.com/juju/juju/caas/kubernetes/provider/specs"
@@ -146,7 +148,7 @@ type kubernetesClient struct {
 type NewK8sClientFunc func(c *rest.Config) (kubernetes.Interface, apiextensionsclientset.Interface, dynamic.Interface, error)
 
 // NewK8sWatcherFunc defines a function which returns a k8s watcher based on the supplied config.
-type NewK8sWatcherFunc func(wi watch.Interface, name string, clock jujuclock.Clock) (*kubernetesNotifyWatcher, error)
+type NewK8sWatcherFunc func(informer cache.SharedIndexInformer, name string, clock jujuclock.Clock) (*kubernetesNotifyWatcher, error)
 
 // RandomPrefixFunc defines a function used to generate a random hex string.
 type RandomPrefixFunc func() (string, error)
@@ -1904,15 +1906,13 @@ func (k *kubernetesClient) AnnotateUnit(appName, podName string, unit names.Unit
 func (k *kubernetesClient) WatchUnits(appName string) (watcher.NotifyWatcher, error) {
 	selector := applicationSelector(appName)
 	logger.Debugf("selecting units %q to watch", selector)
-	w, err := k.client().CoreV1().Pods(k.namespace).Watch(v1.ListOptions{
-		LabelSelector:        selector,
-		Watch:                true,
-		IncludeUninitialized: true,
-	})
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	return k.newWatcher(w, appName, k.clock)
+	factory := informers.NewSharedInformerFactoryWithOptions(k.client(), 0,
+		informers.WithNamespace(k.namespace),
+		informers.WithTweakListOptions(func(o *v1.ListOptions) {
+			o.LabelSelector = selector
+		}),
+	)
+	return k.newWatcher(factory.Core().V1().Pods().Informer(), appName, k.clock)
 }
 
 // WatchContainerStart returns a watcher which is notified when the specified container
@@ -1999,31 +1999,18 @@ func (k *kubernetesClient) WatchContainerStart(appName string, containerName str
 // WatchService returns a watcher which notifies when there
 // are changes to the deployment of the specified application.
 func (k *kubernetesClient) WatchService(appName string) (watcher.NotifyWatcher, error) {
-	// Application may be a statefulset or deployment. It may not have
-	// been set up when the watcher is started so we don't know which it
-	// is ahead of time. So use a multi-watcher to cover both cases.
-	statefulsets := k.client().AppsV1().StatefulSets(k.namespace)
-	sswatcher, err := statefulsets.Watch(v1.ListOptions{
-		LabelSelector: applicationSelector(appName),
-		Watch:         true,
-	})
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	w1, err := k.newWatcher(sswatcher, appName, k.clock)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
+	factory := informers.NewSharedInformerFactoryWithOptions(k.client(), 0,
+		informers.WithNamespace(k.namespace),
+		informers.WithTweakListOptions(func(o *v1.ListOptions) {
+			o.LabelSelector = applicationSelector(appName)
+		}),
+	)
 
-	deployments := k.client().AppsV1().Deployments(k.namespace)
-	dwatcher, err := deployments.Watch(v1.ListOptions{
-		LabelSelector: applicationSelector(appName),
-		Watch:         true,
-	})
+	w1, err := k.newWatcher(factory.Apps().V1().StatefulSets().Informer(), appName, k.clock)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	w2, err := k.newWatcher(dwatcher, appName, k.clock)
+	w2, err := k.newWatcher(factory.Apps().V1().Deployments().Informer(), appName, k.clock)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}

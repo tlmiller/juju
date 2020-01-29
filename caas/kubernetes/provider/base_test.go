@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/juju/juju/caas/kubernetes/provider"
 	"github.com/juju/juju/caas/kubernetes/provider/mocks"
@@ -130,8 +131,8 @@ func (s *BaseSuite) getNamespace() string {
 func (s *BaseSuite) setupController(c *gc.C) *gomock.Controller {
 	ctrl := gomock.NewController(c)
 	newK8sRestClientFunc := s.setupK8sRestClient(c, ctrl, s.getNamespace())
-	newK8sWatcherForTest := func(wi watch.Interface, name string, clock jujuclock.Clock) (*provider.KubernetesNotifyWatcher, error) {
-		w, err := provider.NewKubernetesNotifyWatcher(wi, name, clock)
+	newK8sWatcherForTest := func(informer cache.SharedIndexInformer, name string, clock jujuclock.Clock) (*provider.KubernetesNotifyWatcher, error) {
+		w, err := provider.NewKubernetesNotifyWatcher(informer, name, clock)
 		c.Assert(err, jc.ErrorIsNil)
 		s.watchers = append(s.watchers, w)
 		return w, err
