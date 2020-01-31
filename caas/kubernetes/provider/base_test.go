@@ -4,6 +4,7 @@
 package provider_test
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/golang/mock/gomock"
@@ -48,6 +49,8 @@ type BaseSuite struct {
 	mockExtensions             *mocks.MockExtensionsV1beta1Interface
 	mockSecrets                *mocks.MockSecretInterface
 	mockDeployments            *mocks.MockDeploymentInterface
+	mockNamespaceInformer      *mocks.MockNamespaceInformer
+	mockSharedIndexInformer    *mocks.MockSharedIndexInformer
 	mockStatefulSets           *mocks.MockStatefulSetInterface
 	mockPods                   *mocks.MockPodInterface
 	mockServices               *mocks.MockServiceInterface
@@ -79,6 +82,54 @@ type BaseSuite struct {
 	mockDiscovery *mocks.MockDiscoveryInterface
 
 	watchers []*provider.KubernetesNotifyWatcher
+}
+
+type GenericMatcher struct {
+	description string
+	matcher     func(interface{}) (bool, string)
+}
+
+func GenericMatcherFn(matcher func(interface{}) (bool, string)) *GenericMatcher {
+	return &GenericMatcher{
+		matcher: matcher,
+	}
+}
+
+func (g *GenericMatcher) Matches(i interface{}) bool {
+	if g.matcher == nil {
+		return false
+	}
+	rval, des := g.matcher(i)
+	g.description = des
+	return rval
+}
+
+func (g *GenericMatcher) String() string {
+	return g.description
+}
+
+func ListOptionsFieldSelectorMatcher(fieldSelector string) gomock.Matcher {
+	return GenericMatcherFn(
+		func(i interface{}) (bool, string) {
+			lo, ok := i.(v1.ListOptions)
+			if !ok {
+				return false, "is list options, not a valid corev1.ListOptions"
+			}
+			return lo.FieldSelector == fieldSelector,
+				fmt.Sprintf("is list options field %v == %v", lo.FieldSelector, fieldSelector)
+		})
+}
+
+func ListOptionsLabelSelectorMatcher(labelSelector string) gomock.Matcher {
+	return GenericMatcherFn(
+		func(i interface{}) (bool, string) {
+			lo, ok := i.(v1.ListOptions)
+			if !ok {
+				return false, "is list options, not a valid corev1.ListOptions"
+			}
+			return lo.LabelSelector == labelSelector,
+				fmt.Sprintf("is list options label %v == %v", lo.LabelSelector, labelSelector)
+		})
 }
 
 func (s *BaseSuite) SetUpTest(c *gc.C) {
@@ -198,6 +249,8 @@ func (s *BaseSuite) setupK8sRestClient(c *gc.C, ctrl *gomock.Controller, namespa
 	s.mockExtensions = mocks.NewMockExtensionsV1beta1Interface(ctrl)
 	s.mockStatefulSets = mocks.NewMockStatefulSetInterface(ctrl)
 	s.mockDeployments = mocks.NewMockDeploymentInterface(ctrl)
+	s.mockNamespaceInformer = mocks.NewMockNamespaceInformer(ctrl)
+	s.mockSharedIndexInformer = mocks.NewMockSharedIndexInformer(ctrl)
 	s.mockIngressInterface = mocks.NewMockIngressInterface(ctrl)
 	s.k8sClient.EXPECT().ExtensionsV1beta1().AnyTimes().Return(s.mockExtensions)
 	s.k8sClient.EXPECT().AppsV1().AnyTimes().Return(s.mockApps)

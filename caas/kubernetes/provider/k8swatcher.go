@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"fmt"
 	"time"
 
 	jujuclock "github.com/juju/clock"
@@ -48,8 +49,7 @@ func newKubernetesNotifyWatcher(informer cache.SharedIndexInformer, name string,
 const sendDelay = 1 * time.Second
 
 func (w *kubernetesNotifyWatcher) loop() error {
-	signals := make(chan struct{})
-	defer close(signals)
+	signals := make(chan struct{}, 1)
 	defer close(w.out)
 
 	w.informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -101,18 +101,26 @@ func (w *kubernetesNotifyWatcher) loop() error {
 	out := w.out
 	var delayCh <-chan time.Time
 
+	fmt.Println("hello informer")
+	fmt.Println("hello informer")
+	fmt.Println("hello informer")
+	fmt.Println("hello informer")
 	go w.informer.Run(w.catacomb.Dying())
 	for {
 		select {
 		case <-w.catacomb.Dying():
+			fmt.Println("dying")
 			return w.catacomb.ErrDying()
 		case <-signals:
+			fmt.Println("signal")
 			if delayCh == nil {
 				delayCh = w.clock.After(sendDelay)
 			}
 		case <-delayCh:
+			fmt.Println("delay")
 			out = w.out
 		case out <- struct{}{}:
+			fmt.Println("out")
 			logger.Debugf("fire notify watcher for %v", w.name)
 			out = nil
 			delayCh = nil

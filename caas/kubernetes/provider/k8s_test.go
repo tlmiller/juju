@@ -24,7 +24,7 @@ import (
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	_ "k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -611,28 +611,39 @@ func (s *K8sBrokerSuite) assertDestroy(c *gc.C, isController bool, destroyFunc f
 	namespaceWatcher := s.k8sNewFakeWatcher()
 
 	gomock.InOrder(
-		s.mockNamespaces.EXPECT().Watch(
-			v1.ListOptions{
-				FieldSelector:        fields.OneTermEqualSelector("metadata.name", "test").String(),
-				IncludeUninitialized: true,
-			},
-		).
-			Return(namespaceWatcher, nil),
+		//s.mockNamespaceInformer.EXPECT().Informer().Return(s.mockSharedIndexInformer),
 		s.mockNamespaces.EXPECT().Get("test", v1.GetOptions{IncludeUninitialized: true}).
 			Return(ns, nil),
+
 		s.mockNamespaces.EXPECT().Delete("test", s.deleteOptions(v1.DeletePropagationForeground, "")).
 			Return(nil),
+
 		s.mockStorageClass.EXPECT().DeleteCollection(
 			s.deleteOptions(v1.DeletePropagationForeground, ""),
 			v1.ListOptions{LabelSelector: "juju-model==test"},
 		).
 			Return(s.k8sNotFoundError()),
-		// still terminating.
+
+		//// still terminating.
 		s.mockNamespaces.EXPECT().Get("test", v1.GetOptions{IncludeUninitialized: true}).
 			Return(ns, nil),
-		// terminated, not found returned.
-		s.mockNamespaces.EXPECT().Get("test", v1.GetOptions{IncludeUninitialized: true}).
-			Return(nil, s.k8sNotFoundError()),
+		////s.mockNamespaces.EXPECT().Get("test", v1.GetOptions{IncludeUninitialized: true}).
+		////	Return(nil, s.k8sNotFoundError()),
+
+		//s.mockNamespaces.EXPECT().Watch(
+		//	ListOptionsFieldSelectorMatcher(fields.OneTermEqualSelector("metadata.name", "test").String()),
+		//).DoAndReturn(func(_ interface{}) (watch.Interface, error) {
+		//	panic("boom")
+		//	//Return(namespaceWatcher, nil),
+		//}),
+
+	//s.mockNamespaces.EXPECT().List(
+	//	ListOptionsFieldSelectorMatcher(fields.OneTermEqualSelector("metadata.name", "test").String()),
+	//).Return(&core.NamespaceList{}, nil),
+
+	// terminated, not found returned.
+	//s.mockNamespaces.EXPECT().Get("test", v1.GetOptions{IncludeUninitialized: true}).
+	//	Return(nil, s.k8sNotFoundError()),
 	)
 
 	go func(w *watch.RaceFreeFakeWatcher, clk *testclock.Clock) {

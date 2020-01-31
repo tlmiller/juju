@@ -44,51 +44,6 @@ type bootstrapSuite struct {
 	controllerStackerGetter func() provider.ControllerStackerForTest
 }
 
-type genericMatcher struct {
-	description string
-	matcher     func(interface{}) bool
-}
-
-func genericMatcherFn(description string, matcher func(interface{}) bool) *genericMatcher {
-	return &genericMatcher{
-		description: description,
-		matcher:     matcher,
-	}
-}
-
-func (g *genericMatcher) Matches(i interface{}) bool {
-	if g.matcher == nil {
-		return false
-	}
-	return g.matcher(i)
-}
-
-func (g *genericMatcher) String() string {
-	return g.description
-}
-
-func listOptionsFieldSelectorMatcher(fieldSelector string) gomock.Matcher {
-	return genericMatcherFn("is list options field",
-		func(i interface{}) bool {
-			lo, ok := i.(v1.ListOptions)
-			if !ok {
-				return false
-			}
-			return lo.FieldSelector == fieldSelector
-		})
-}
-
-func listOptionsLabelSelectorMatcher(labelSelector string) gomock.Matcher {
-	return genericMatcherFn("is list options label",
-		func(i interface{}) bool {
-			lo, ok := i.(v1.ListOptions)
-			if !ok {
-				return false
-			}
-			return lo.LabelSelector == labelSelector
-		})
-}
-
 var _ = gc.Suite(&bootstrapSuite{})
 
 func (s *bootstrapSuite) SetUpTest(c *gc.C) {
@@ -680,6 +635,7 @@ $JUJU_TOOLS_DIR/jujud machine --data-dir $JUJU_DATA_DIR --controller-id 0 --log-
 			},
 		},
 	}
+	fmt.Println(eventsPartial)
 
 	eventsDone := &core.EventList{
 		Items: []core.Event{
@@ -705,12 +661,14 @@ $JUJU_TOOLS_DIR/jujud machine --data-dir $JUJU_DATA_DIR --controller-id 0 --log-
 			},
 		},
 	}
+	fmt.Println(eventsDone)
 
 	podReady := &core.Pod{
 		Status: core.PodStatus{
 			Phase: core.PodRunning,
 		},
 	}
+	fmt.Println(podReady)
 
 	gomock.InOrder(
 		// create namespace.
@@ -795,46 +753,46 @@ $JUJU_TOOLS_DIR/jujud machine --data-dir $JUJU_DATA_DIR --controller-id 0 --log-
 		s.mockStorageClass.EXPECT().Get("some-storage", v1.GetOptions{}).
 			Return(&sc, nil),
 
+		s.mockStatefulSets.EXPECT().Create(statefulSetSpec).
+			Return(statefulSetSpec, nil),
+
 		s.mockPods.EXPECT().List(
-			listOptionsLabelSelectorMatcher("juju-app==juju-controller-test"),
+			ListOptionsLabelSelectorMatcher("juju-app==juju-controller-test"),
 		).Return(&core.PodList{}, nil),
 		s.mockPods.EXPECT().Watch(
-			listOptionsLabelSelectorMatcher("juju-app==juju-controller-test"),
+			ListOptionsLabelSelectorMatcher("juju-app==juju-controller-test"),
 		).DoAndReturn(func(_ interface{}) (watch.Interface, error) {
 			podWatcher.Action(watch.Added, podReady)
 			return podWatcher, nil
 		}),
 
-		s.mockStatefulSets.EXPECT().Create(statefulSetSpec).
-			Return(statefulSetSpec, nil),
 		s.mockEvents.EXPECT().List(
-			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
+			ListOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
 		).Return(&core.EventList{}, nil),
-		s.mockEvents.EXPECT().Watch(
-			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
-		).DoAndReturn(func(...interface{}) (watch.Interface, error) {
-			eventWatcher.Action(watch.Added, &eventsPartial.Items[0])
-			return eventWatcher, nil
-		}),
 
 		s.mockEvents.EXPECT().List(
-			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
+			ListOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
 		).DoAndReturn(func(...interface{}) (*core.EventList, error) {
 			eventWatcher.Action(watch.Added, &eventsPartial.Items[0])
 			s.clock.WaitAdvance(time.Second, testing.ShortWait, 2)
 			return eventsPartial, nil
 		}),
 
+		s.mockEvents.EXPECT().Watch(
+			ListOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
+		).DoAndReturn(func(...interface{}) (watch.Interface, error) {
+			eventWatcher.Action(watch.Added, &eventsPartial.Items[0])
+			return eventWatcher, nil
+		}),
+
 		s.mockEvents.EXPECT().List(
-			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
+			ListOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
 		).DoAndReturn(func(...interface{}) (*core.EventList, error) {
 			podWatcher.Action(watch.Added, podReady)
 			s.clock.WaitAdvance(time.Second, testing.ShortWait, 2)
 			return eventsDone, nil
 		}),
-		s.mockEvents.EXPECT().List(
-			listOptionsFieldSelectorMatcher("involvedObject.name=controller-0,involvedObject.kind=Pod"),
-		).Return(eventsDone, nil),
+
 		s.mockPods.EXPECT().Get("controller-0", v1.GetOptions{IncludeUninitialized: true}).
 			Return(podReady, nil),
 	)

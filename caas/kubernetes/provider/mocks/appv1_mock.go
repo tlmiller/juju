@@ -40,6 +40,7 @@ func (m *MockAppsV1Interface) EXPECT() *MockAppsV1InterfaceMockRecorder {
 
 // ControllerRevisions mocks base method
 func (m *MockAppsV1Interface) ControllerRevisions(arg0 string) v11.ControllerRevisionInterface {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ControllerRevisions", arg0)
 	ret0, _ := ret[0].(v11.ControllerRevisionInterface)
 	return ret0
@@ -47,11 +48,13 @@ func (m *MockAppsV1Interface) ControllerRevisions(arg0 string) v11.ControllerRev
 
 // ControllerRevisions indicates an expected call of ControllerRevisions
 func (mr *MockAppsV1InterfaceMockRecorder) ControllerRevisions(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ControllerRevisions", reflect.TypeOf((*MockAppsV1Interface)(nil).ControllerRevisions), arg0)
 }
 
 // DaemonSets mocks base method
 func (m *MockAppsV1Interface) DaemonSets(arg0 string) v11.DaemonSetInterface {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DaemonSets", arg0)
 	ret0, _ := ret[0].(v11.DaemonSetInterface)
 	return ret0
@@ -59,11 +62,13 @@ func (m *MockAppsV1Interface) DaemonSets(arg0 string) v11.DaemonSetInterface {
 
 // DaemonSets indicates an expected call of DaemonSets
 func (mr *MockAppsV1InterfaceMockRecorder) DaemonSets(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DaemonSets", reflect.TypeOf((*MockAppsV1Interface)(nil).DaemonSets), arg0)
 }
 
 // Deployments mocks base method
 func (m *MockAppsV1Interface) Deployments(arg0 string) v11.DeploymentInterface {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deployments", arg0)
 	ret0, _ := ret[0].(v11.DeploymentInterface)
 	return ret0
@@ -71,11 +76,13 @@ func (m *MockAppsV1Interface) Deployments(arg0 string) v11.DeploymentInterface {
 
 // Deployments indicates an expected call of Deployments
 func (mr *MockAppsV1InterfaceMockRecorder) Deployments(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deployments", reflect.TypeOf((*MockAppsV1Interface)(nil).Deployments), arg0)
 }
 
 // RESTClient mocks base method
 func (m *MockAppsV1Interface) RESTClient() rest.Interface {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RESTClient")
 	ret0, _ := ret[0].(rest.Interface)
 	return ret0
@@ -83,11 +90,13 @@ func (m *MockAppsV1Interface) RESTClient() rest.Interface {
 
 // RESTClient indicates an expected call of RESTClient
 func (mr *MockAppsV1InterfaceMockRecorder) RESTClient() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RESTClient", reflect.TypeOf((*MockAppsV1Interface)(nil).RESTClient))
 }
 
 // ReplicaSets mocks base method
 func (m *MockAppsV1Interface) ReplicaSets(arg0 string) v11.ReplicaSetInterface {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReplicaSets", arg0)
 	ret0, _ := ret[0].(v11.ReplicaSetInterface)
 	return ret0
@@ -95,11 +104,13 @@ func (m *MockAppsV1Interface) ReplicaSets(arg0 string) v11.ReplicaSetInterface {
 
 // ReplicaSets indicates an expected call of ReplicaSets
 func (mr *MockAppsV1InterfaceMockRecorder) ReplicaSets(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplicaSets", reflect.TypeOf((*MockAppsV1Interface)(nil).ReplicaSets), arg0)
 }
 
 // StatefulSets mocks base method
 func (m *MockAppsV1Interface) StatefulSets(arg0 string) v11.StatefulSetInterface {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StatefulSets", arg0)
 	ret0, _ := ret[0].(v11.StatefulSetInterface)
 	return ret0
@@ -107,6 +118,7 @@ func (m *MockAppsV1Interface) StatefulSets(arg0 string) v11.StatefulSetInterface
 
 // StatefulSets indicates an expected call of StatefulSets
 func (mr *MockAppsV1InterfaceMockRecorder) StatefulSets(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatefulSets", reflect.TypeOf((*MockAppsV1Interface)(nil).StatefulSets), arg0)
 }
 
@@ -135,6 +147,7 @@ func (m *MockDeploymentInterface) EXPECT() *MockDeploymentInterfaceMockRecorder 
 
 // Create mocks base method
 func (m *MockDeploymentInterface) Create(arg0 *v1.Deployment) (*v1.Deployment, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", arg0)
 	ret0, _ := ret[0].(*v1.Deployment)
 	ret1, _ := ret[1].(error)
@@ -143,11 +156,13 @@ func (m *MockDeploymentInterface) Create(arg0 *v1.Deployment) (*v1.Deployment, e
 
 // Create indicates an expected call of Create
 func (mr *MockDeploymentInterfaceMockRecorder) Create(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockDeploymentInterface)(nil).Create), arg0)
 }
 
 // Delete mocks base method
 func (m *MockDeploymentInterface) Delete(arg0 string, arg1 *v10.DeleteOptions) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -155,11 +170,13 @@ func (m *MockDeploymentInterface) Delete(arg0 string, arg1 *v10.DeleteOptions) e
 
 // Delete indicates an expected call of Delete
 func (mr *MockDeploymentInterfaceMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDeploymentInterface)(nil).Delete), arg0, arg1)
 }
 
 // DeleteCollection mocks base method
 func (m *MockDeploymentInterface) DeleteCollection(arg0 *v10.DeleteOptions, arg1 v10.ListOptions) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteCollection", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -167,11 +184,13 @@ func (m *MockDeploymentInterface) DeleteCollection(arg0 *v10.DeleteOptions, arg1
 
 // DeleteCollection indicates an expected call of DeleteCollection
 func (mr *MockDeploymentInterfaceMockRecorder) DeleteCollection(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCollection", reflect.TypeOf((*MockDeploymentInterface)(nil).DeleteCollection), arg0, arg1)
 }
 
 // Get mocks base method
 func (m *MockDeploymentInterface) Get(arg0 string, arg1 v10.GetOptions) (*v1.Deployment, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
 	ret0, _ := ret[0].(*v1.Deployment)
 	ret1, _ := ret[1].(error)
@@ -180,11 +199,13 @@ func (m *MockDeploymentInterface) Get(arg0 string, arg1 v10.GetOptions) (*v1.Dep
 
 // Get indicates an expected call of Get
 func (mr *MockDeploymentInterfaceMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockDeploymentInterface)(nil).Get), arg0, arg1)
 }
 
 // List mocks base method
 func (m *MockDeploymentInterface) List(arg0 v10.ListOptions) (*v1.DeploymentList, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
 	ret0, _ := ret[0].(*v1.DeploymentList)
 	ret1, _ := ret[1].(error)
@@ -193,11 +214,13 @@ func (m *MockDeploymentInterface) List(arg0 v10.ListOptions) (*v1.DeploymentList
 
 // List indicates an expected call of List
 func (mr *MockDeploymentInterfaceMockRecorder) List(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockDeploymentInterface)(nil).List), arg0)
 }
 
 // Patch mocks base method
 func (m *MockDeploymentInterface) Patch(arg0 string, arg1 types.PatchType, arg2 []byte, arg3 ...string) (*v1.Deployment, error) {
+	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1, arg2}
 	for _, a := range arg3 {
 		varargs = append(varargs, a)
@@ -210,12 +233,14 @@ func (m *MockDeploymentInterface) Patch(arg0 string, arg1 types.PatchType, arg2 
 
 // Patch indicates an expected call of Patch
 func (mr *MockDeploymentInterfaceMockRecorder) Patch(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Patch", reflect.TypeOf((*MockDeploymentInterface)(nil).Patch), varargs...)
 }
 
 // Update mocks base method
 func (m *MockDeploymentInterface) Update(arg0 *v1.Deployment) (*v1.Deployment, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", arg0)
 	ret0, _ := ret[0].(*v1.Deployment)
 	ret1, _ := ret[1].(error)
@@ -224,11 +249,13 @@ func (m *MockDeploymentInterface) Update(arg0 *v1.Deployment) (*v1.Deployment, e
 
 // Update indicates an expected call of Update
 func (mr *MockDeploymentInterfaceMockRecorder) Update(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockDeploymentInterface)(nil).Update), arg0)
 }
 
 // UpdateStatus mocks base method
 func (m *MockDeploymentInterface) UpdateStatus(arg0 *v1.Deployment) (*v1.Deployment, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateStatus", arg0)
 	ret0, _ := ret[0].(*v1.Deployment)
 	ret1, _ := ret[1].(error)
@@ -237,11 +264,13 @@ func (m *MockDeploymentInterface) UpdateStatus(arg0 *v1.Deployment) (*v1.Deploym
 
 // UpdateStatus indicates an expected call of UpdateStatus
 func (mr *MockDeploymentInterfaceMockRecorder) UpdateStatus(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStatus", reflect.TypeOf((*MockDeploymentInterface)(nil).UpdateStatus), arg0)
 }
 
 // Watch mocks base method
 func (m *MockDeploymentInterface) Watch(arg0 v10.ListOptions) (watch.Interface, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Watch", arg0)
 	ret0, _ := ret[0].(watch.Interface)
 	ret1, _ := ret[1].(error)
@@ -250,6 +279,7 @@ func (m *MockDeploymentInterface) Watch(arg0 v10.ListOptions) (watch.Interface, 
 
 // Watch indicates an expected call of Watch
 func (mr *MockDeploymentInterfaceMockRecorder) Watch(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockDeploymentInterface)(nil).Watch), arg0)
 }
 
@@ -278,6 +308,7 @@ func (m *MockStatefulSetInterface) EXPECT() *MockStatefulSetInterfaceMockRecorde
 
 // Create mocks base method
 func (m *MockStatefulSetInterface) Create(arg0 *v1.StatefulSet) (*v1.StatefulSet, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", arg0)
 	ret0, _ := ret[0].(*v1.StatefulSet)
 	ret1, _ := ret[1].(error)
@@ -286,11 +317,13 @@ func (m *MockStatefulSetInterface) Create(arg0 *v1.StatefulSet) (*v1.StatefulSet
 
 // Create indicates an expected call of Create
 func (mr *MockStatefulSetInterfaceMockRecorder) Create(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockStatefulSetInterface)(nil).Create), arg0)
 }
 
 // Delete mocks base method
 func (m *MockStatefulSetInterface) Delete(arg0 string, arg1 *v10.DeleteOptions) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -298,11 +331,13 @@ func (m *MockStatefulSetInterface) Delete(arg0 string, arg1 *v10.DeleteOptions) 
 
 // Delete indicates an expected call of Delete
 func (mr *MockStatefulSetInterfaceMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockStatefulSetInterface)(nil).Delete), arg0, arg1)
 }
 
 // DeleteCollection mocks base method
 func (m *MockStatefulSetInterface) DeleteCollection(arg0 *v10.DeleteOptions, arg1 v10.ListOptions) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteCollection", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -310,11 +345,13 @@ func (m *MockStatefulSetInterface) DeleteCollection(arg0 *v10.DeleteOptions, arg
 
 // DeleteCollection indicates an expected call of DeleteCollection
 func (mr *MockStatefulSetInterfaceMockRecorder) DeleteCollection(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCollection", reflect.TypeOf((*MockStatefulSetInterface)(nil).DeleteCollection), arg0, arg1)
 }
 
 // Get mocks base method
 func (m *MockStatefulSetInterface) Get(arg0 string, arg1 v10.GetOptions) (*v1.StatefulSet, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
 	ret0, _ := ret[0].(*v1.StatefulSet)
 	ret1, _ := ret[1].(error)
@@ -323,11 +360,13 @@ func (m *MockStatefulSetInterface) Get(arg0 string, arg1 v10.GetOptions) (*v1.St
 
 // Get indicates an expected call of Get
 func (mr *MockStatefulSetInterfaceMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockStatefulSetInterface)(nil).Get), arg0, arg1)
 }
 
 // List mocks base method
 func (m *MockStatefulSetInterface) List(arg0 v10.ListOptions) (*v1.StatefulSetList, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0)
 	ret0, _ := ret[0].(*v1.StatefulSetList)
 	ret1, _ := ret[1].(error)
@@ -336,11 +375,13 @@ func (m *MockStatefulSetInterface) List(arg0 v10.ListOptions) (*v1.StatefulSetLi
 
 // List indicates an expected call of List
 func (mr *MockStatefulSetInterfaceMockRecorder) List(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockStatefulSetInterface)(nil).List), arg0)
 }
 
 // Patch mocks base method
 func (m *MockStatefulSetInterface) Patch(arg0 string, arg1 types.PatchType, arg2 []byte, arg3 ...string) (*v1.StatefulSet, error) {
+	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1, arg2}
 	for _, a := range arg3 {
 		varargs = append(varargs, a)
@@ -353,12 +394,14 @@ func (m *MockStatefulSetInterface) Patch(arg0 string, arg1 types.PatchType, arg2
 
 // Patch indicates an expected call of Patch
 func (mr *MockStatefulSetInterfaceMockRecorder) Patch(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Patch", reflect.TypeOf((*MockStatefulSetInterface)(nil).Patch), varargs...)
 }
 
 // Update mocks base method
 func (m *MockStatefulSetInterface) Update(arg0 *v1.StatefulSet) (*v1.StatefulSet, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", arg0)
 	ret0, _ := ret[0].(*v1.StatefulSet)
 	ret1, _ := ret[1].(error)
@@ -367,11 +410,13 @@ func (m *MockStatefulSetInterface) Update(arg0 *v1.StatefulSet) (*v1.StatefulSet
 
 // Update indicates an expected call of Update
 func (mr *MockStatefulSetInterfaceMockRecorder) Update(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockStatefulSetInterface)(nil).Update), arg0)
 }
 
 // UpdateStatus mocks base method
 func (m *MockStatefulSetInterface) UpdateStatus(arg0 *v1.StatefulSet) (*v1.StatefulSet, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateStatus", arg0)
 	ret0, _ := ret[0].(*v1.StatefulSet)
 	ret1, _ := ret[1].(error)
@@ -380,11 +425,13 @@ func (m *MockStatefulSetInterface) UpdateStatus(arg0 *v1.StatefulSet) (*v1.State
 
 // UpdateStatus indicates an expected call of UpdateStatus
 func (mr *MockStatefulSetInterfaceMockRecorder) UpdateStatus(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStatus", reflect.TypeOf((*MockStatefulSetInterface)(nil).UpdateStatus), arg0)
 }
 
 // Watch mocks base method
 func (m *MockStatefulSetInterface) Watch(arg0 v10.ListOptions) (watch.Interface, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Watch", arg0)
 	ret0, _ := ret[0].(watch.Interface)
 	ret1, _ := ret[1].(error)
@@ -393,5 +440,6 @@ func (m *MockStatefulSetInterface) Watch(arg0 v10.ListOptions) (watch.Interface,
 
 // Watch indicates an expected call of Watch
 func (mr *MockStatefulSetInterfaceMockRecorder) Watch(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockStatefulSetInterface)(nil).Watch), arg0)
 }
