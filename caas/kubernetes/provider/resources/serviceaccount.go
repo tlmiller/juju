@@ -90,6 +90,26 @@ func (sa *ServiceAccount) Delete(ctx context.Context, client kubernetes.Interfac
 	return nil
 }
 
+func (sa *ServiceAccount) Ensure(
+	ctx context.Context,
+	client kubernetes.Interface,
+) ([]func(), error) {
+	cleanups := []func(){func() { _ = sa.Delete(ctx, client) }}
+	err := sa.Update(ctx, client)
+	if errors.IsNotFound(err) {
+		err = sa.Apply(ctx, client)
+	}
+
+	if err != nil {
+		return cleanups, errors.Annotatef(
+			err,
+			"ensuring service account %q",
+			sa.Name,
+		)
+	}
+	return cleanups, nil
+}
+
 // Events emitted by the resource.
 func (sa *ServiceAccount) Events(ctx context.Context, client kubernetes.Interface) ([]corev1.Event, error) {
 	return ListEventsForObject(ctx, client, sa.Namespace, sa.Name, "ServiceAccount")
@@ -101,4 +121,24 @@ func (sa *ServiceAccount) ComputeStatus(_ context.Context, _ kubernetes.Interfac
 		return "", status.Terminated, sa.DeletionTimestamp.Time, nil
 	}
 	return "", status.Active, now, nil
+}
+
+func (sa *ServiceAccount) Update(
+	ctx context.Context,
+	client kubernetes.Interface,
+) error {
+	out, err := client.CoreV1().ServiceAccounts(sa.Namespace).Update(
+		ctx,
+		&sa.ServiceAccount,
+		metav1.UpdateOptions{
+			FieldManager: JujuFieldManager,
+		},
+	)
+	if k8serrors.IsNotFound(err) {
+		return errors.NewNotFound(err, "updating service account")
+	} else if err != nil {
+		return errors.Trace(err)
+	}
+	sa.ServiceAccount = *out
+	return nil
 }

@@ -73,7 +73,7 @@ func stepsFor28() []Step {
 		},
 		&upgradeStep{
 			description: "write unit agent state to controller for all running units and remove files",
-			targets:     []Target{HostMachine},
+			targets:     []Target{Controller},
 			run:         moveUnitAgentStateToController,
 		},
 	}
