@@ -24,7 +24,9 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/juju/juju/agent"
 	agenttools "github.com/juju/juju/agent/tools"
@@ -152,22 +154,63 @@ type controllerStacker interface {
 	Deploy() error
 }
 
-func controllerCorelation(broker *kubernetesClient) (string, error) {
-	// ensure controller specific annotations.
-	controllerUUIDKey := k8sutils.AnnotationControllerIsControllerKey(false)
-	_ = broker.addAnnotations(controllerUUIDKey, "true")
+// findControllerNamespace is used for finding a controllers namespace based on
+// it's model name and controller uuid. This function really shouldn't exists
+// and should be looked to removed in 3.0. We have it hear as we are still
+// trying to use Kubernetes annotations as database selectors in some parts of
+// Juju.
+func findControllerNamespace(
+	client kubernetes.Interface,
+	modelName string,
+	controllerUUID string,
+) (*core.Namespace, error) {
+	// First we are going to start off by listing namespaces that are not using
+	// legacy labels as that is the direction we are moving towards and hence
+	// should be the quickest operation
+	namespaces, err := client.CoreV1().Namespaces().List(
+		context.TODO(),
+		v1.ListOptions{
+			LabelSelector: labels.Set{
+				constants.LabelJujuModelName: modelName,
+			}.String(),
+		},
+	)
 
-	ns, err := broker.listNamespacesByAnnotations(broker.GetAnnotations())
-	if errors.IsNotFound(err) || ns == nil {
-		// No existing controller found on the cluster.
-		// A controller must be bootstrapping now.
-		// It will reply on setControllerNamespace in controller stack to set namespace name.
-		return "", errors.NewNotFound(err, "controller")
-	}
 	if err != nil {
-		return "", errors.Trace(err)
+		return nil, errors.Annotate(err, "finding controller namespace with non legacy labels")
 	}
-	return ns[0].GetName(), nil
+
+	for _, ns := range namespaces.Items {
+		if ns.Annotations[k8sutils.AnnotationControllerUUIDKey(false)] == controllerUUID {
+			return &ns, nil
+		}
+	}
+
+	// We didn't find anything using old labels so lets try the old ones.
+	namespaces, err = client.CoreV1().Namespaces().List(
+		context.TODO(),
+		v1.ListOptions{
+			LabelSelector: labels.Set{
+				constants.LegacyLabelModelName: modelName,
+			}.String(),
+		},
+	)
+
+	if err != nil {
+		return nil, errors.Annotate(err, "finding controller namespace with legacy labels")
+	}
+
+	for _, ns := range namespaces.Items {
+		if ns.Annotations[k8sutils.AnnotationControllerUUIDKey(true)] == controllerUUID {
+			return &ns, nil
+		}
+	}
+
+	return nil, errors.NotFoundf(
+		"controller namespace not found for model %q and controller uuid %q",
+		modelName,
+		controllerUUID,
+	)
 }
 
 // DecideControllerNamespace decides the namespace name to use for a new controller.
