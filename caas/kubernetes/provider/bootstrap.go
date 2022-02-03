@@ -1441,7 +1441,11 @@ func (c *controllerStack) buildContainerSpecForCommands(jujudCmds []string) (*co
 		c.broker.randomPrefix,
 	)
 
-	chSeries := series.LatestLts()
+	chSeries, err := series.DefaultSupportedLts()
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+
 	os, err := series.GetOSFromSeries(chSeries)
 	if err != nil {
 		return nil, errors.Trace(err)

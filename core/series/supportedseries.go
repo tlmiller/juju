@@ -4,6 +4,7 @@
 package series
 
 import (
+	"github.com/juju/juju/version"
 	"strings"
 	"sync"
 	"time"
@@ -68,8 +69,8 @@ func AllWorkloadOSTypes(requestedSeries, imageStream string) (set.Strings, error
 		return nil, errors.Trace(err)
 	}
 	result := set.NewStrings()
-	for _, series := range supported.workloadSeries(true) {
-		result.Add(DefaultOSTypeNameFromSeries(series))
+	for _, wSeries := range supported.workloadSeries(true) {
+		result.Add(DefaultOSTypeNameFromSeries(wSeries))
 	}
 	return result, nil
 }
@@ -371,6 +372,28 @@ var (
 // the work to determine the latest lts series once.
 var latestLtsSeries string
 
+// DefaultSupportedLts return the default supported lts for this version of Juju if it is known, an LTS release and is
+// supported.
+func DefaultSupportedLts() (string, error) {
+	seriesVersionsMutex.Lock()
+	defer seriesVersionsMutex.Unlock()
+	updateSeriesVersionsOnce()
+
+	defaultLTS := version.DefaultSupportedLTS()
+	seriesVersion, exists := ubuntuSeries[SeriesName(defaultLTS)]
+	if !exists {
+		return "", errors.NotFoundf("default supported lts %q is not found in the list of known Ubuntu series", defaultLTS)
+	}
+
+	if !seriesVersion.LTS {
+		return "", errors.NotSupportedf("default supported lts %q is not recognised as an LTS release", defaultLTS)
+	} else if !seriesVersion.Supported {
+		return "", errors.NotSupportedf("default supported lts %q", defaultLTS)
+	}
+
+	return defaultLTS, nil
+}
+
 // LatestLts returns the Latest LTS Release found in distro-info
 func LatestLts() string {
 	if latestLtsSeries != "" {
@@ -382,11 +405,11 @@ func LatestLts() string {
 	updateSeriesVersionsOnce()
 
 	var latest SeriesName
-	for k, version := range ubuntuSeries {
-		if !version.LTS || !version.Supported {
+	for k, seriesVersion := range ubuntuSeries {
+		if !seriesVersion.LTS || !seriesVersion.Supported {
 			continue
 		}
-		if version.Version > ubuntuSeries[latest].Version {
+		if seriesVersion.Version > ubuntuSeries[latest].Version {
 			latest = k
 		}
 	}
