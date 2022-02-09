@@ -107,6 +107,8 @@ jobs:
     - name: Test kubeflow
       run: |
         sg microk8s <<EOF
+          microk8s kubectl get deployments --all-namespaces
+          microk8s kubectl port-forward svc/kfp-api 8888:8888
           set -eux
           cd bundle-kubeflow
           tox -e tests -- -m edge
