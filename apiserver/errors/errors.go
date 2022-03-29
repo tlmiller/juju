@@ -20,18 +20,18 @@ import (
 
 var logger = loggo.GetLogger("juju.apiserver.common.errors")
 
-var (
-	ErrBadId              = errors.New("id not found")
-	ErrBadCreds           = errors.New("invalid entity name or password")
-	ErrNoCreds            = errors.New("no credentials provided")
-	ErrLoginExpired       = errors.New("login expired")
-	ErrPerm               = errors.New("permission denied")
-	ErrNotLoggedIn        = errors.New("not logged in")
-	ErrUnknownWatcher     = errors.New("unknown watcher id")
-	ErrStoppedWatcher     = errors.New("watcher has been stopped")
-	ErrBadRequest         = errors.New("invalid request")
-	ErrTryAgain           = errors.New("try again")
-	ErrActionNotAvailable = errors.New("action no longer available")
+const (
+	ErrBadId              = errors.ConstError("id not found")
+	ErrBadCreds           = errors.ConstError("invalid entity name or password")
+	ErrNoCreds            = errors.ConstError("no credentials provided")
+	ErrLoginExpired       = errors.ConstError("login expired")
+	ErrPerm               = errors.ConstError("permission denied")
+	ErrNotLoggedIn        = errors.ConstError("not logged in")
+	ErrUnknownWatcher     = errors.ConstError("unknown watcher id")
+	ErrStoppedWatcher     = errors.ConstError("watcher has been stopped")
+	ErrBadRequest         = errors.ConstError("invalid request")
+	ErrTryAgain           = errors.ConstError("try again")
+	ErrActionNotAvailable = errors.ConstError("action no longer available")
 )
 
 // OperationBlockedError returns an error which signifies that
@@ -237,11 +237,11 @@ func ServerError(err error) *params.Error {
 		code = params.CodeIncompatibleClient
 		rawErr := errors.Cause(err).(*params.IncompatibleClientError)
 		info = rawErr.AsMap()
-	case IsNotLeaderError(err):
+	case errors.Is(err, &NotLeaderError{}):
 		code = params.CodeNotLeader
 		rawErr := errors.Cause(err).(*NotLeaderError)
 		info = rawErr.AsMap()
-	case IsDeadlineExceededError(err):
+	case errors.Is(err, &DeadlineExceededError{}):
 		code = params.CodeDeadlineExceeded
 	case lease.IsLeaseError(err):
 		code = params.CodeLeaseError

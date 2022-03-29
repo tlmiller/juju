@@ -4,7 +4,6 @@
 package errors
 
 import (
-	stderrors "errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -16,16 +15,22 @@ import (
 	"github.com/juju/juju/core/network"
 )
 
-var (
-
+const (
 	// ErrCannotEnterScope indicates that a relation unit failed to enter its scope
 	// due to either the unit or the relation not being Alive.
-	ErrCannotEnterScope = stderrors.New("cannot enter scope: unit or relation is not alive")
+	ErrCannotEnterScope = errors.ConstError("cannot enter scope: unit or relation is not alive")
 
 	// ErrCannotEnterScopeYet indicates that a relation unit failed to enter its
 	// scope due to a required and pre-existing subordinate unit that is not Alive.
 	// Once that subordinate has been removed, a new one can be created.
-	ErrCannotEnterScopeYet = stderrors.New("cannot enter scope yet: non-alive subordinate unit has not been removed")
+	ErrCannotEnterScopeYet = errors.ConstError("cannot enter scope yet: non-alive subordinate unit has not been removed")
+
+	// ErrCharmRevisionAlreadyModified is returned when a pending or
+	// placeholder charm is no longer pending or a placeholder, signaling
+	// the charm is available in state with its full information.
+	ErrCharmRevisionAlreadyModified = errors.ConstError("charm revision already modified")
+
+	ErrDead = errors.ConstError("not found or dead")
 )
 
 // errCharmAlreadyUploaded is returned by UpdateUploadedCharm() when
@@ -58,13 +63,6 @@ func IsCharmAlreadyUploadedError(err interface{}) bool {
 	_, ok := value.(*errCharmAlreadyUploaded)
 	return ok
 }
-
-// ErrCharmRevisionAlreadyModified is returned when a pending or
-// placeholder charm is no longer pending or a placeholder, signaling
-// the charm is available in state with its full information.
-var ErrCharmRevisionAlreadyModified = fmt.Errorf("charm revision already modified")
-
-var ErrDead = fmt.Errorf("not found or dead")
 
 type notAliveError struct {
 	entity string

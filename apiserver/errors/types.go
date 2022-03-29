@@ -192,6 +192,12 @@ func (e *NotLeaderError) ServerAddress() string {
 	return e.serverAddress
 }
 
+// Is returns true if the target is the NotLeaderError.
+func (e *NotLeaderError) Is(target error) bool {
+	_, ok := target.(*NotLeaderError)
+	return ok
+}
+
 // ServerID returns the server ID from the raft state. This should align with
 // the controller machine ID of Juju.
 func (e *NotLeaderError) ServerID() string {
@@ -216,12 +222,6 @@ func NewNotLeaderError(serverAddress, serverID string) error {
 	}
 }
 
-// IsNotLeaderError returns true if the error is the NotLeaderError.
-func IsNotLeaderError(err error) bool {
-	_, ok := errors.Cause(err).(*NotLeaderError)
-	return ok
-}
-
 // DeadlineExceededError creates a typed error for when a raft operation is
 // enqueued, but the deadline is exceeded.
 type DeadlineExceededError struct {
@@ -232,16 +232,16 @@ func (e *DeadlineExceededError) Error() string {
 	return e.message
 }
 
+// Is returns true if the target is the DeadlineExceededError.
+func (e *DeadlineExceededError) Is(target error) bool {
+	_, ok := target.(*DeadlineExceededError)
+	return ok
+}
+
 // NewDeadlineExceededError creates a new DeadlineExceededError with the
 // underlying message.
 func NewDeadlineExceededError(message string) error {
 	return &DeadlineExceededError{
 		message: message,
 	}
-}
-
-// IsDeadlineExceededError returns true if the error is the DeadlineExceededError.
-func IsDeadlineExceededError(err error) bool {
-	_, ok := errors.Cause(err).(*DeadlineExceededError)
-	return ok
 }
