@@ -92,9 +92,9 @@ jobs:
         # We increase the number of file descriptors that processes can have 
         # open so mongo doesn't fail. Client tests still rely on mongo and as
         # such we have a high request count for FD's
-        ulimit -n 8192
-        go test -v ./cmd/juju/... -check.v
-        go test -v ./cmd/plugins/... -check.v
+        ulimit -n 16384
+        go test -v -p 1 ./cmd/juju/... -check.v
+        go test -v -p 1 ./cmd/plugins/... -check.v
       shell: bash
 
     - name: "Test client: ubuntu-latest"
