@@ -27,7 +27,7 @@ jobs:
         GO111MODULE=off go get -u github.com/gordonklaus/ineffassign
 
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3.1.0
 
     - name: Download Dependencies
       run: go mod download
@@ -65,7 +65,7 @@ jobs:
       id: go
 
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3.1.0
 
     - name: Schema Check
       run: |
