@@ -199,6 +199,28 @@ func (s *BootstrapSuite) TestLocalControllerCharm(c *gc.C) {
 	s.assertControllerApplication(c)
 }
 
+func (s *BootstrapSuite) TestControllerCharmConstraints(c *gc.C) {
+	if coreos.HostOS() != coreos.Ubuntu {
+		c.Skip("controller charm only supported on Ubuntu")
+	}
+
+	_, cmd, err := s.initBootstrapCommand(c, nil, "--bootstrap-constraints", "arch=arm64")
+	c.Assert(err, jc.ErrorIsNil)
+
+	var tw loggo.TestWriter
+	err = loggo.RegisterWriter("bootstrap-test", &tw)
+	c.Assert(err, jc.ErrorIsNil)
+	defer loggo.RemoveWriter("bootstrap-test")
+
+	err = cmd.Run(nil)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(tw.Log(), jc.LogMatches, jc.SimpleMessages{{
+		loggo.DEBUG,
+		`Successfully deployed local Juju controller charm`,
+	}})
+	s.assertControllerApplication(c)
+}
+
 func (s *BootstrapSuite) TestStoreControllerCharm(c *gc.C) {
 	if coreos.HostOS() != coreos.Ubuntu {
 		c.Skip("controller charm only supported on Ubuntu")
