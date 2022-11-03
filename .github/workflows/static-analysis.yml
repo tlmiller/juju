@@ -102,7 +102,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.issue.number,
-              event: REQUEST_CHANGE,
+              event: "REQUEST_CHANGE",
               body: "hello mate"
             })
       #- name: Checkout
