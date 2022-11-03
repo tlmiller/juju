@@ -16,6 +16,9 @@ func Register(registry facade.FacadeRegistry) {
 	registry.MustRegister("CAASAdmission", 1, func(ctx facade.Context) (facade.Facade, error) {
 		return newStateFacade(ctx)
 	}, reflect.TypeOf((*Facade)(nil)))
+	registry.MustRegister("CAASAdmission", 2, func(ctx facade.Context) (facade.Facade, error) {
+		return newStateFacade(ctx)
+	}, reflect.TypeOf((*Facade)(nil)))
 }
 
 func newStateFacade(ctx facade.Context) (*Facade, error) {
