@@ -1,6 +1,5 @@
 name: "Generate"
 on:
-  push:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -11,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   Generate:
