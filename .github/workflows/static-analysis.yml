@@ -144,7 +144,7 @@ jobs:
         if: "failure()"
         run: |
           make rebuild-schema
-          echo "schema-diff=$(git diff apiserver/facades/schema.json" >> $GITHUB_OUTPUT
+          echo "schema-diff=$(git diff apiserver/facades/schema.json)" >> $GITHUB_OUTPUT
 
       - name: Test
         if: "failure()"
