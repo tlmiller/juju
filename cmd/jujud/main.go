@@ -33,6 +33,7 @@ import (
 	"github.com/juju/juju/cmd/internal/dumplogs"
 	"github.com/juju/juju/cmd/internal/run"
 	agentcmd "github.com/juju/juju/cmd/jujud/agent"
+	"github.com/juju/juju/cmd/jujud/debug"
 	"github.com/juju/juju/core/arch"
 	"github.com/juju/juju/core/machinelock"
 	coreos "github.com/juju/juju/core/os"
@@ -306,6 +307,15 @@ func Main(args []string) int {
 
 	var code int
 	commandName := filepath.Base(args[0])
+
+	if debugErr := debug.SetupJujuDebug(args); debugErr != nil {
+		err = debugErr
+		code = 1
+		if !errors.Is(err, debug.ErrShouldContinue) {
+			goto FINISH
+		}
+	}
+
 	switch commandName {
 	case jujunames.Jujud:
 		code, err = jujuDMain(args, ctx)
@@ -329,6 +339,8 @@ func Main(args []string) int {
 	default:
 		code, err = hookToolMain(commandName, ctx, args)
 	}
+
+FINISH:
 	if err != nil {
 		cmd.WriteError(ctx.Stderr, err)
 	}

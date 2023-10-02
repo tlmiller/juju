@@ -5,6 +5,7 @@
 package names
 
 const (
+	Dlv            = "dlv"
 	Jujuc          = "jujuc"
 	Jujud          = "jujud"
 	ContainerAgent = "containeragent"
