@@ -73,6 +73,8 @@ func CreateModel(
 			return fmt.Errorf("invalid model uuid: %w", err)
 		}
 
+		finaliser := state.Finalise()
+
 		return db.StdTxn(ctx, func(ctx context.Context, tx *sql.Tx) error {
 			modelTypeState := modelTypeStateFunc(
 				func(ctx context.Context, cloudName string) (string, error) {
@@ -87,6 +89,9 @@ func CreateModel(
 				return fmt.Errorf("create bootstrap model %q with uuid %q: %w", args.Name, uuid, err)
 			}
 
+			if err := finaliser(ctx, tx, uuid); err != nil {
+				return fmt.Errorf("finalising bootstrap model %q with uuid %q: %w", args.Name, uuid, err)
+			}
 			return nil
 		})
 	}

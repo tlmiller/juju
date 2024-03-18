@@ -12,15 +12,16 @@ import (
 	"github.com/juju/errors"
 
 	"github.com/juju/juju/core/changestream"
+	corecredential "github.com/juju/juju/core/credential"
 	coredatabase "github.com/juju/juju/core/database"
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/core/watcher"
 	"github.com/juju/juju/domain"
 	dbcloud "github.com/juju/juju/domain/cloud/state"
 	"github.com/juju/juju/domain/credential"
+	credentialerrors "github.com/juju/juju/domain/credential/errors"
 	userstate "github.com/juju/juju/domain/user/state"
 	"github.com/juju/juju/internal/database"
-	"github.com/juju/juju/internal/uuid"
 )
 
 // State is used to access the database.
@@ -43,7 +44,14 @@ func credentialKeyMap(id credential.ID) sqlair.M {
 	}
 }
 
-func (st *State) credentialUUID(ctx context.Context, tx *sqlair.TX, id credential.ID) (string, error) {
+// credentialUUID finds and returns the uuid for the cloud credential identified
+// by the natural key of id. If no
+func (st *State) credentialUUID(
+	ctx context.Context,
+	tx *sqlair.TX,
+	id credential.ID,
+) (corecredential.UUID, error) {
+
 	selectQ := `
 SELECT &M.uuid
 FROM v_cloud_credential
@@ -51,20 +59,94 @@ WHERE name = $M.credential_name
 AND owner_name = $M.owner
 AND cloud_name = $M.cloud_name
 `
-
 	selectStmt, err := sqlair.Prepare(selectQ, sqlair.M{})
 	if err != nil {
-		return "", errors.Trace(err)
+		return corecredential.UUID(""), errors.Trace(err)
 	}
-	uuid := sqlair.M{}
-	err = tx.Query(ctx, selectStmt, credentialKeyMap(id)).Get(&uuid)
+	res := sqlair.M{}
+	err = tx.Query(ctx, selectStmt, credentialKeyMap(id)).Get(&res)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", fmt.Errorf("cloud credential %q %w%w", id, errors.NotFound, errors.Hide(err))
+		return corecredential.UUID(""), fmt.Errorf(
+			"%w for id %q", credentialerrors.NotFound, id,
+		)
 	} else if err != nil {
-		return "", fmt.Errorf("fetching cloud credential %q: %w", id, err)
+		return corecredential.UUID(""), fmt.Errorf(
+			"fetching cloud credential %q: %w", id, domain.CoerceError(err),
+		)
 	}
-	return uuid["uuid"].(string), nil
+
+	uuidStr, exists := res["uuid"]
+	if !exists {
+		return corecredential.UUID(""), fmt.Errorf(
+			"%w expected cloud credential uuid for credential %q, got no returned value",
+			credentialerrors.NotFound, id,
+		)
+	}
+
+	return corecredential.UUID(uuidStr.(string)), nil
 }
+
+//func UpsertCloudCredential(
+//	ctx context.Context,
+//	tx *sqlair.TX,
+//	cloud string,
+//	owner user.UUID,
+//	name string,
+//	credential credential.CloudCredentialInfo,
+//) (corecredential.UUID, *bool, error) {
+//	q := `
+//SELECT  cloud_credential.uuid AS &M.uuid,
+//        cloud_credential.invalid AS &M.invalid
+//FROM    cloud_credential
+//INNER JOIN cloud
+//ON cloud_credential.cloud_uuid = cloud.uuid
+//WHERE   cloud.name = $M.cloud_name
+//AND cloud_credential.name = $M.credential_name
+//AND owner_uuid = $M.owner_uuid
+//`
+//
+//	stmt, err := sqlair.Prepare(q, sqlair.M{})
+//	if err != nil {
+//		return corecredential.UUID(""), nil, errors.Trace(err)
+//	}
+//
+//	result := sqlair.M{}
+//
+//	err = tx.Query(ctx, stmt, &sqlair.M{
+//		"cloud_name":      cloud,
+//		"credential_name": name,
+//		"owner_uuid":      owner.String(),
+//	}).Get(result)
+//
+//	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+//		return errors.Trace(err)
+//	}
+//	invalid, ok := result["invalid"].(bool)
+//	if ok {
+//		existingInvalid = &invalid
+//	}
+//	credentialUUID, exists := result["uuid"].(string)
+//	if !exists {
+//		if credential.Invalid || credential.InvalidReason != "" {
+//			return fmt.Errorf("adding invalid credential %w", errors.NotSupported)
+//		}
+//		uuid, err := corecredential.NewUUID()
+//		if err != nil {
+//			return fmt.Errorf("generating new credential uuid: %w", err)
+//		}
+//		credentialUUID = uuid.String()
+//	}
+//
+//	if err := upsertCredential(ctx, tx, credentialUUID, id, credential); err != nil {
+//		return domain.CoerceError(fmt.Errorf("updating credential: %w", err))
+//	}
+//
+//	if err := updateCredentialAttributes(ctx, tx, credentialUUID, credential.Attributes); err != nil {
+//		return domain.CoerceError(fmt.Errorf("updating credential %q attributes: %w", id.Name, err))
+//	}
+//
+//	return existingInvalid, errors.Trace(err)
+//}
 
 // UpsertCloudCredential adds or updates a cloud credential with the given name,
 // cloud and owner. If the credential exists already, the existing credential's
@@ -105,12 +187,16 @@ AND owner_name = $M.owner
 		if ok {
 			existingInvalid = &invalid
 		}
-		credentialUUID, ok := result["uuid"].(string)
-		if !ok {
+		credentialUUID, exists := result["uuid"].(string)
+		if !exists {
 			if credential.Invalid || credential.InvalidReason != "" {
 				return fmt.Errorf("adding invalid credential %w", errors.NotSupported)
 			}
-			credentialUUID = uuid.MustNewUUID().String()
+			uuid, err := corecredential.NewUUID()
+			if err != nil {
+				return fmt.Errorf("generating new credential uuid: %w", err)
+			}
+			credentialUUID = uuid.String()
 		}
 
 		if err := upsertCredential(ctx, tx, credentialUUID, id, credential); err != nil {
@@ -529,7 +615,7 @@ func (st *State) WatchCredential(
 		return nil, errors.Trace(err)
 	}
 
-	var uuid string
+	var uuid corecredential.UUID
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		var err error
 		uuid, err = st.credentialUUID(ctx, tx, id)
@@ -538,7 +624,7 @@ func (st *State) WatchCredential(
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	result, err := getWatcher("cloud_credential", uuid, changestream.All)
+	result, err := getWatcher("cloud_credential", uuid.String(), changestream.All)
 	return result, errors.Annotatef(err, "watching credential")
 }
 
@@ -550,9 +636,9 @@ func (st *State) ModelsUsingCloudCredential(ctx context.Context, id credential.I
 	}
 
 	query := `
-SELECT mm.model_uuid AS &M.model_uuid, mm.name AS &M.name
-FROM   model_metadata mm
-JOIN cloud_credential cc ON cc.uuid = mm.cloud_credential_uuid
+SELECT m.uuid AS &M.model_uuid, m.name AS &M.name
+FROM   model m
+JOIN cloud_credential cc ON cc.uuid = m.cloud_credential_uuid
 JOIN cloud ON cloud.uuid = cc.cloud_uuid
 JOIN user ON cc.owner_uuid = user.uuid
 `

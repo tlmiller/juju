@@ -165,7 +165,7 @@ func (s *State) validateTargetExists(
 SELECT &M.found_it FROM (
     SELECT 1 AS found_it FROM cloud WHERE cloud.name = $M.grant_on
     UNION
-    SELECT 1 AS found_it FROM model_list WHERE model_list.uuid = $M.grant_on
+    SELECT 1 AS found_it FROM model WHERE model.uuid = $M.grant_on
 )
 `
 	// Validate the grant_on target exists.

@@ -18,6 +18,7 @@ import (
 
 	"github.com/juju/juju/cloud"
 	"github.com/juju/juju/core/changestream"
+	corecredential "github.com/juju/juju/core/credential"
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/core/user"
 	"github.com/juju/juju/core/watcher"
@@ -25,6 +26,7 @@ import (
 	"github.com/juju/juju/core/watcher/watchertest"
 	dbcloud "github.com/juju/juju/domain/cloud/state"
 	"github.com/juju/juju/domain/credential"
+	credentialerrors "github.com/juju/juju/domain/credential/errors"
 	userstate "github.com/juju/juju/domain/user/state"
 	changestreamtesting "github.com/juju/juju/internal/changestream/testing"
 	"github.com/juju/juju/internal/uuid"
@@ -501,7 +503,7 @@ func (s *credentialSuite) TestWatchCredentialNotFound(c *gc.C) {
 	id := credential.ID{Cloud: "stratus", Owner: s.userName, Name: "foobar"}
 	ctx := context.Background()
 	_, err := st.WatchCredential(ctx, s.watcherFunc(c, ""), id)
-	c.Assert(err, jc.ErrorIs, errors.NotFound)
+	c.Assert(err, jc.ErrorIs, credentialerrors.NotFound)
 }
 
 func (s *credentialSuite) TestWatchCredential(c *gc.C) {
@@ -509,7 +511,7 @@ func (s *credentialSuite) TestWatchCredential(c *gc.C) {
 	id := credential.ID{Cloud: "stratus", Owner: s.userName, Name: "foobar"}
 	s.createCloudCredential(c, st, id)
 
-	var uuid string
+	var uuid corecredential.UUID
 	err := s.TxnRunner().Txn(context.Background(), func(ctx context.Context, tx *sqlair.TX) error {
 		var err error
 		uuid, err = st.credentialUUID(ctx, tx, id)
@@ -517,7 +519,7 @@ func (s *credentialSuite) TestWatchCredential(c *gc.C) {
 	})
 	c.Assert(err, jc.ErrorIsNil)
 
-	w, err := st.WatchCredential(context.Background(), s.watcherFunc(c, uuid), id)
+	w, err := st.WatchCredential(context.Background(), s.watcherFunc(c, uuid.String()), id)
 	c.Assert(err, jc.ErrorIsNil)
 	s.AddCleanup(func(c *gc.C) { workertest.CleanKill(c, w) })
 
@@ -570,7 +572,7 @@ func (s *credentialSuite) TestModelsUsingCloudCredential(c *gc.C) {
 			return err
 		}
 		result, err := tx.ExecContext(ctx, fmt.Sprintf(`
-		INSERT INTO model_metadata (model_uuid, name, owner_uuid, model_type_id, cloud_uuid, cloud_credential_uuid)
+		INSERT INTO model (model_uuid, name, owner_uuid, model_type_id, cloud_uuid, cloud_credential_uuid)
 		SELECT %q, %q, %q, 0,
 			(SELECT uuid FROM cloud WHERE cloud.name="stratus"),
 			(SELECT uuid FROM cloud_credential cc WHERE cc.name="foobar")`,

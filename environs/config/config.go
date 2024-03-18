@@ -453,6 +453,11 @@ func New(withDefaults Defaulting, attrs map[string]interface{}) (*Config, error)
 
 	defined, err := checker.Coerce(attrs, nil)
 	if err != nil {
+		fmt.Println("coerce error")
+		fmt.Println("coerce error")
+		fmt.Println("coerce error")
+		fmt.Println("coerce error")
+		fmt.Println("coerce error")
 		return nil, errors.Trace(err)
 	}
 
@@ -461,11 +466,23 @@ func New(withDefaults Defaulting, attrs map[string]interface{}) (*Config, error)
 		unknown: make(map[string]interface{}),
 	}
 	if err := c.setLoggingFromEnviron(); err != nil {
+		fmt.Println("logging error")
+		fmt.Println("logging error")
+		fmt.Println("logging error")
+		fmt.Println("logging error")
+		fmt.Println("logging error")
 		return nil, errors.Trace(err)
 	}
 
 	// no old config to compare against
 	if err := Validate(c, nil); err != nil {
+		fmt.Println("we are here in this error")
+		fmt.Println("we are here in this error")
+		fmt.Println("we are here in this error")
+		fmt.Println("we are here in this error")
+		fmt.Println("we are here in this error")
+		fmt.Println("we are here in this error")
+		fmt.Println("we are here in this error")
 		return nil, errors.Trace(err)
 	}
 	// Copy unknown attributes onto the type-specific map.
@@ -2221,7 +2238,7 @@ CIDRs specifying what ingress can be applied to offers in this model.`,
 		Group: environschema.EnvironGroup,
 	},
 	TypeKey: {
-		Description: "Type of model, e.g. local, ec2",
+		Description: "Type of model, e.g. iaas or caas",
 		Type:        environschema.Tstring,
 		Mandatory:   true,
 		Immutable:   true,

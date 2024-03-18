@@ -151,6 +151,26 @@ func (s *Service) CreateModel(
 		return coremodel.UUID(""), err
 	}
 
+	// We only support not setting the cloud credential for a new model when
+	// the models cloud supports the auth type [cloud.EmptyAuthType].
+	//if args.Credential.IsZero() {
+
+	//	supports, err := s.st.CloudSupportsAuthType(ctx, args.Cloud, cloud.EmptyAuthType)
+	//	if err != nil {
+	//		return model.UUID(""), fmt.Errorf(
+	//			"establishing default credential type for cloud %q creating new model %q: %w",
+	//			args.Cloud, args.Name, err,
+	//		)
+	//	}
+
+	//	if !supports {
+	//		return model.UUID(""), fmt.Errorf(
+	//			"model %q %w, cloud credential needs to be set for cloud %q",
+	//			args.Name, errors.NotValid, args.Cloud,
+	//		)
+	//	}
+	//}
+
 	modelType, err := ModelTypeForCloud(ctx, s.st, args.Cloud)
 	if err != nil {
 		return coremodel.UUID(""), fmt.Errorf(

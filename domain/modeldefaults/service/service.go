@@ -41,6 +41,11 @@ type State interface {
 	// set cloud region.
 	ModelCloudRegionDefaults(context.Context, coremodel.UUID) (map[string]string, error)
 
+	// ModelMetadataDefaults is responsible for returning model config values
+	// related to the models metadata. If no model is found for the provided
+	// uuid an error satisfying [modelerrors.NotFound] will be returned.
+	ModelMetadataDefaults(context.Context, coremodel.UUID) (map[string]string, error)
+
 	// ModelProviderConfigSchema returns the providers config schema source based on
 	// the cloud set for the model.
 	ModelProviderConfigSchema(context.Context, coremodel.UUID) (config.ConfigSchemaSource, error)
@@ -126,6 +131,19 @@ func (s *Service) ModelDefaults(
 		defaults[k] = modeldefaults.DefaultAttributeValue{
 			Source: config.JujuRegionSource,
 			Value:  v,
+		}
+	}
+
+	metadataDefaults, err := s.st.ModelMetadataDefaults(ctx, uuid)
+	if err != nil {
+		return modeldefaults.Defaults{}, fmt.Errorf("getting model %q defaults: %w", uuid, err)
+	}
+
+	for k, v := range metadataDefaults {
+		defaults[k] = modeldefaults.DefaultAttributeValue{
+			Source: config.JujuDefaultSource,
+			//Strategy: &modeldefaults.PreferDefaultApplyStrategy{},
+			Value: v,
 		}
 	}
 

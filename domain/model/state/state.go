@@ -14,6 +14,7 @@ import (
 	"github.com/juju/juju/core/database"
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/domain"
+	clouderrors "github.com/juju/juju/domain/cloud/errors"
 	"github.com/juju/juju/domain/credential"
 	"github.com/juju/juju/domain/model"
 	modelerrors "github.com/juju/juju/domain/model/errors"
@@ -35,6 +36,109 @@ func NewState(
 	}
 }
 
+// ModelCloudNameAndCredential returns the cloud name and credential id for a
+// model identified by the model name and the owner. If no model exists for the
+// provided name and user a [modelerrors.NotFound] error is returned.
+func (s *State) ModelCloudNameAndCredential(
+	ctx context.Context,
+	modelName string,
+	modelOwnerName string,
+) (string, credential.ID, error) {
+	db, err := s.DB()
+	if err != nil {
+		return "", credential.ID{}, errors.Trace(err)
+	}
+
+	stmt := `
+SELECT cloud_name, cloud_credential_name, cloud_credential_owner_uuid
+FROM v_model
+WHERE name = ?
+AND owner_name = ?
+`
+
+	var (
+		cloudName       string
+		credentialName  sql.NullString
+		credentialOwner sql.NullString
+	)
+	err = db.StdTxn(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, stmt, modelName, modelOwnerName)
+		if err := row.Scan(&cloudName, &credentialName, &credentialOwner); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", credential.ID{}, fmt.Errorf("%w for name %q and owner %q",
+			modelerrors.NotFound, modelName, modelOwnerName,
+		)
+	} else if err != nil {
+		return "", credential.ID{}, fmt.Errorf(
+			"getting cloud name and credential for model %q with owner %q: %w",
+			modelName, modelOwnerName, domain.CoerceError(err),
+		)
+	}
+
+	if !credentialName.Valid {
+		return cloudName, credential.ID{}, nil
+	}
+
+	credId := credential.ID{
+		Cloud: cloudName,
+		Name:  credentialName.String,
+		Owner: credentialOwner.String,
+	}
+
+	return cloudName, credId, nil
+}
+
+// CloudType is responsible for reporting the type for a given cloud name. If no
+// cloud exists for the provided name then an error of [clouderrors.NotFound]
+// will be returned.
+func (s *State) CloudType(
+	ctx context.Context,
+	name string,
+) (string, error) {
+	db, err := s.DB()
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+
+	ctFunc := CloudType()
+
+	var cloudType string
+	return cloudType, db.StdTxn(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		var err error
+		cloudType, err = ctFunc(ctx, tx, name)
+		return err
+	})
+}
+
+// CloudType is responsible for reporting the type for a given cloud name. If no
+// cloud exists for the provided name then an error of [clouderrors.NotFound]
+// will be returned.
+func CloudType() func(context.Context, *sql.Tx, string) (string, error) {
+	stmt := `
+SELECT ct.type
+FROM cloud_type ct
+INNER JOIN cloud c
+ON c.cloud_type_id = ct.id
+WHERE c.name = ?
+`
+
+	return func(ctx context.Context, tx *sql.Tx, name string) (string, error) {
+		var cloudType string
+		err := tx.QueryRowContext(ctx, stmt, name).Scan(&cloudType)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("%w for name %q", clouderrors.NotFound, name)
+		} else if err != nil {
+			return "", fmt.Errorf("determing type for cloud %q: %w", name, domain.CoerceError(err))
+		}
+		return cloudType, nil
+	}
+}
+
 // Create is responsible for creating a new moddel from start to finish. It will
 // register the model existence and associate all of the model metadata.
 // If a model already exists with the same name and owner then an error
@@ -44,6 +148,7 @@ func NewState(
 func (s *State) Create(
 	ctx context.Context,
 	uuid coremodel.UUID,
+	modelType coremodel.ModelType,
 	input model.ModelCreationArgs,
 ) error {
 	db, err := s.DB()
@@ -52,7 +157,7 @@ func (s *State) Create(
 	}
 
 	return db.StdTxn(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		return Create(ctx, uuid, input, tx)
+		return Create(ctx, tx, uuid, modelType, input)
 	})
 }
 
@@ -64,42 +169,19 @@ func (s *State) Create(
 // will be returned.
 func Create(
 	ctx context.Context,
-	uuid coremodel.UUID,
-	input model.ModelCreationArgs,
 	tx *sql.Tx,
+	uuid coremodel.UUID,
+	modelType coremodel.ModelType,
+	input model.ModelCreationArgs,
 ) error {
-	if err := createModel(ctx, uuid, tx); err != nil {
+	if err := createModel(ctx, tx, uuid, modelType, input); err != nil {
 		return err
 	}
 
-	if err := createModelAgent(ctx, uuid, input.AgentVersion, tx); err != nil {
+	if err := createModelAgent(ctx, tx, uuid, input.AgentVersion); err != nil {
 		return err
 	}
 
-	if err := createModelMetadata(ctx, uuid, input, tx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// createModel is responsible for establishing the existence of a new model
-// without any associated metadata. If a model with the supplied UUID already
-// exists then an error that satisfies modelerrors.AlreadyExists is returned.
-func createModel(ctx context.Context, uuid coremodel.UUID, tx *sql.Tx) error {
-	stmt := "INSERT INTO model_list (uuid) VALUES (?);"
-	result, err := tx.ExecContext(ctx, stmt, uuid)
-	if jujudb.IsErrConstraintPrimaryKey(err) {
-		return fmt.Errorf("%w for uuid %q", modelerrors.AlreadyExists, uuid)
-	} else if err != nil {
-		return errors.Trace(err)
-	}
-
-	if num, err := result.RowsAffected(); err != nil {
-		return errors.Trace(err)
-	} else if num != 1 {
-		return errors.Errorf("expected 1 row to be inserted, got %d", num)
-	}
 	return nil
 }
 
@@ -109,9 +191,9 @@ func createModel(ctx context.Context, uuid coremodel.UUID, tx *sql.Tx) error {
 // model exists for the provided UUID then a [modelerrors.NotFound] is returned.
 func createModelAgent(
 	ctx context.Context,
+	tx *sql.Tx,
 	modelUUID coremodel.UUID,
 	agentVersion version.Number,
-	tx *sql.Tx,
 ) error {
 	stmt := `
 INSERT INTO model_agent (model_uuid, previous_version, target_version)
@@ -143,8 +225,8 @@ INSERT INTO model_agent (model_uuid, previous_version, target_version)
 	return nil
 }
 
-// createModelMetadata is responsible for creating a new model metadata record
-// for the given model UUID. If a model metadata record already exists for the
+// createModel is responsible for creating a new model record
+// for the given model UUID. If a model record already exists for the
 // given model uuid then an error satisfying modelerrors.AlreadyExists is
 // returned. Conversely should the owner already have a model that exists with
 // the provided name then a modelerrors.AlreadyExists error will be returned. If
@@ -158,11 +240,12 @@ INSERT INTO model_agent (model_uuid, previous_version, target_version)
 // this  scenario the errors from updateCredential are also possible.
 // If the model owner does not exist an error satisfying [usererrors.NotFound]
 // will be returned.
-func createModelMetadata(
+func createModel(
 	ctx context.Context,
-	uuid coremodel.UUID,
-	input model.ModelCreationArgs,
 	tx *sql.Tx,
+	uuid coremodel.UUID,
+	modelType coremodel.ModelType,
+	input model.ModelCreationArgs,
 ) error {
 	cloudStmt := `
 SELECT uuid
@@ -192,18 +275,18 @@ AND removed = false
 	}
 
 	stmt := `
-INSERT INTO model_metadata (model_uuid,
-                            cloud_uuid,
-                            model_type_id,
-                            name,
-                            owner_uuid)
+INSERT INTO model (uuid,
+            cloud_uuid,
+            model_type_id,
+            name,
+            owner_uuid)
 SELECT ?, ?, model_type.id, ?, ?
 FROM model_type
 WHERE model_type.type = ?
 `
 
 	res, err := tx.ExecContext(ctx, stmt,
-		uuid, cloudUUID, input.Name, input.Owner, input.Type,
+		uuid, cloudUUID, input.Name, input.Owner, modelType,
 	)
 	if jujudb.IsErrConstraintPrimaryKey(err) {
 		return fmt.Errorf("%w for uuid %q", modelerrors.AlreadyExists, uuid)
@@ -229,7 +312,7 @@ WHERE model_type.type = ?
 	}
 
 	if !input.Credential.IsZero() {
-		err := updateCredential(ctx, uuid, input.Credential, tx)
+		err := updateCredential(ctx, tx, uuid, input.Credential)
 		if err != nil {
 			return err
 		}
@@ -250,23 +333,18 @@ func (s *State) Delete(
 	}
 
 	deleteModelAgent := "DELETE FROM model_agent WHERE model_uuid = ?"
-	deleteModelMetadata := "DELETE FROM model_metadata WHERE model_uuid = ?"
-	deleteModelList := "DELETE FROM model_list WHERE uuid = ?"
+	deleteModel := "DELETE FROM model WHERE uuid = ?"
 	return db.StdTxn(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, deleteModelAgent, uuid)
 		if err != nil {
 			return fmt.Errorf("delete model %q agent: %w", uuid, err)
 		}
 
-		_, err = tx.ExecContext(ctx, deleteModelMetadata, uuid)
+		res, err := tx.ExecContext(ctx, deleteModel, uuid)
 		if err != nil {
 			return fmt.Errorf("deleting model %q metadata: %w", uuid, err)
 		}
 
-		res, err := tx.ExecContext(ctx, deleteModelList, uuid)
-		if err != nil {
-			return fmt.Errorf("delete model %q: %w", uuid, err)
-		}
 		if num, err := res.RowsAffected(); err != nil {
 			return errors.Trace(err)
 		} else if num != 1 {
@@ -274,6 +352,70 @@ func (s *State) Delete(
 		}
 		return nil
 	})
+}
+
+// Finalise is responsible for setting a model as fully constructed and
+// indicates the final system state for the model is ready for use. This is used
+// because the model creation process involves several transactions with which
+// anyone could fail at a given time.
+//
+// If no model exists for the provided id then a [modelerrors.NotFound] will be
+// returned. If the model as previously been finalised a
+// [modelerrors.AlreadyFinalised] error will be returned.
+func (s *State) Finalise(ctx context.Context, uuid coremodel.UUID) error {
+	db, err := s.DB()
+	if err != nil {
+		return errors.Trace(err)
+	}
+
+	finalise := Finalise()
+
+	return db.StdTxn(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		return finalise(ctx, tx, uuid)
+	})
+}
+
+// FinaliseFunc is responsible for setting a model as fully constructed and
+// indicates the final system state for the model is ready for use. This is used
+// because the model creation process involves several transactions with which
+// anyone could fail at a given time.
+//
+// If no model exists for the provided id then a [modelerrors.NotFound] will be
+// returned. If the model as previously been finalised a
+// [modelerrors.AlreadyFinalised] error will be returned.
+type FinaliseFunc func(context.Context, *sql.Tx, coremodel.UUID) error
+
+// Finalise constructs a [FinaliseFunc] that can safely be used over several
+// transaction retry's.
+func Finalise() FinaliseFunc {
+	existsStmt := `
+SELECT finalised FROM model WHERE uuid = ?
+`
+
+	stmt := `
+UPDATE model 
+SET finalised = TRUE
+WHERE uuid = ?
+`
+
+	return func(ctx context.Context, tx *sql.Tx, uuid coremodel.UUID) error {
+		var finalised bool
+		err := tx.QueryRowContext(ctx, existsStmt, uuid).Scan(&finalised)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w for id %q", modelerrors.NotFound, uuid)
+		} else if err != nil {
+			return fmt.Errorf("determining finalised status for model with id %q: %w", uuid, err)
+		}
+
+		if finalised {
+			return fmt.Errorf("%w for id %q", modelerrors.AlreadyFinalised, uuid)
+		}
+
+		if _, err := tx.ExecContext(ctx, stmt, uuid); err != nil {
+			return fmt.Errorf("finalising model with id %q: %w", uuid, err)
+		}
+		return nil
+	}
 }
 
 // GetModelTypes returns the slice of model.Type's supported by state.
@@ -351,14 +493,14 @@ func setCloudRegion(
 	tx *sql.Tx,
 ) error {
 	cloudRegionStmt := `
-SELECT cloud_region.uuid
-FROM cloud_region
-INNER JOIN cloud 
-ON cloud.uuid = cloud_region.cloud_uuid
-INNER JOIN model_metadata
-ON model_metadata.cloud_uuid = cloud.uuid
-WHERE model_metadata.model_uuid = ?
-AND cloud_region.name = ?
+SELECT cr.uuid
+FROM cloud_region cr
+INNER JOIN cloud c
+ON c.uuid = cr.cloud_uuid
+INNER JOIN model m
+ON m.cloud_uuid = c.uuid
+WHERE m.uuid = ?
+AND cr.name = ?
 `
 
 	var cloudRegionUUID string
@@ -381,9 +523,9 @@ AND cloud_region.name = ?
 	}
 
 	modelMetadataStmt := `
-UPDATE model_metadata
+UPDATE model
 SET cloud_region_uuid = ?
-WHERE model_uuid = ?
+WHERE uuid = ?
 AND cloud_region_uuid IS NULL
 `
 
@@ -424,9 +566,24 @@ func (s *State) UpdateCredential(
 	}
 
 	return db.StdTxn(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		return updateCredential(ctx, uuid, id, tx)
+		return updateCredential(ctx, tx, uuid, id)
 	})
 }
+
+//func (s *State) UpsertCloudCredential(
+//	ctx context.Context,
+//	cloud string,
+//	owner user.UUID,
+//	name string,
+//	credential.CloudCredentialInfo,
+//) error {
+//	db, err := s.DB()
+//	if err != nil {
+//		return errors.Trace(err)
+//	}
+//
+//
+//}
 
 // updateCredential is responsible for updating the cloud credential in use
 // by model. If the cloud credential is not found an error that satisfies
@@ -435,28 +592,28 @@ func (s *State) UpdateCredential(
 // set for the model then an error that satisfies errors.NotValid is returned.
 func updateCredential(
 	ctx context.Context,
+	tx *sql.Tx,
 	uuid coremodel.UUID,
 	id credential.ID,
-	tx *sql.Tx,
 ) error {
 	cloudCredUUIDStmt := `
-SELECT cloud_credential.uuid,
-       cloud.uuid
-FROM cloud_credential
-INNER JOIN cloud
-ON cloud.uuid = cloud_credential.cloud_uuid
-INNER JOIN user
-ON cloud_credential.owner_uuid = user.uuid
-WHERE cloud.name = ?
-AND user.name = ?
-AND user.removed = false
-AND cloud_credential.name = ?
+SELECT cc.uuid,
+       c.uuid
+FROM cloud_credential cc
+INNER JOIN cloud c
+ON c.uuid = cc.cloud_uuid
+INNER JOIN user u
+ON cc.owner_uuid = u.uuid
+WHERE c.name = ?
+AND u.name = ?
+AND u.removed = false
+AND cc.name = ?
 `
 
 	stmt := `
-UPDATE model_metadata
+UPDATE model
 SET cloud_credential_uuid = ?
-WHERE model_uuid = ?
+WHERE uuid= ?
 AND cloud_uuid = ?
 `
 
