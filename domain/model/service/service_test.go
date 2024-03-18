@@ -175,7 +175,6 @@ func (s *serviceSuite) TestModelCreation(c *C) {
 		Credential:  cred,
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIsNil)
@@ -201,7 +200,6 @@ func (s *serviceSuite) TestModelCreationInvalidCloud(c *C) {
 		CloudRegion: "myregion",
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIs, errors.NotFound)
@@ -218,7 +216,6 @@ func (s *serviceSuite) TestModelCreationNoCloudRegion(c *C) {
 		CloudRegion: "noexist",
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIs, errors.NotFound)
@@ -241,7 +238,6 @@ func (s *serviceSuite) TestModelCreationOwnerNotFound(c *C) {
 		CloudRegion: "myregion",
 		Owner:       notFoundUser,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIs, usererrors.NotFound)
@@ -264,7 +260,6 @@ func (s *serviceSuite) TestModelCreationNoCloudCredential(c *C) {
 		},
 		Owner: s.userUUID,
 		Name:  "my-awesome-model",
-		Type:  coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIs, errors.NotFound)
@@ -282,7 +277,6 @@ func (s *serviceSuite) TestModelCreationNameOwnerConflict(c *C) {
 		CloudRegion: "myregion",
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIsNil)
@@ -292,7 +286,6 @@ func (s *serviceSuite) TestModelCreationNameOwnerConflict(c *C) {
 		CloudRegion: "myregion",
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIs, modelerrors.AlreadyExists)
@@ -330,7 +323,6 @@ func (s *serviceSuite) TestUpdateModelCredential(c *C) {
 		CloudRegion: "myregion",
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIsNil)
@@ -366,7 +358,6 @@ func (s *serviceSuite) TestUpdateModelCredentialReplace(c *C) {
 		Credential:  cred,
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIsNil)
@@ -395,7 +386,6 @@ func (s *serviceSuite) TestUpdateModelCredentialZeroValue(c *C) {
 		CloudRegion: "myregion",
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIsNil)
@@ -436,7 +426,6 @@ func (s *serviceSuite) TestUpdateModelCredentialDifferentCloud(c *C) {
 		Credential:  cred,
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIsNil)
@@ -471,7 +460,6 @@ func (s *serviceSuite) TestUpdateModelCredentialNotFound(c *C) {
 		Credential:  cred,
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIsNil)
@@ -500,7 +488,6 @@ func (s *serviceSuite) TestDeleteModel(c *C) {
 		Credential:  cred,
 		Owner:       s.userUUID,
 		Name:        "my-awesome-model",
-		Type:        coremodel.IAAS,
 	})
 	c.Assert(err, jc.ErrorIsNil)
 
@@ -546,7 +533,6 @@ func (s *serviceSuite) TestAgentVersionUnsupportedGreater(c *C) {
 		Credential:   cred,
 		Owner:        s.userUUID,
 		Name:         "my-awesome-model",
-		Type:         coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIs, modelerrors.AgentVersionNotSupported)
@@ -583,7 +569,6 @@ func (s *serviceSuite) TestAgentVersionUnsupportedLess(c *C) {
 		Credential:   cred,
 		Owner:        s.userUUID,
 		Name:         "my-awesome-model",
-		Type:         coremodel.IAAS,
 	})
 
 	c.Assert(err, jc.ErrorIs, modelerrors.AgentVersionNotSupported)

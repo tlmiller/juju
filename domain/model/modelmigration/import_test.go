@@ -134,7 +134,6 @@ func (i *importSuite) TestModelCreate(c *gc.C) {
 			Name:  "test-model",
 			Owner: userUUID,
 			UUID:  modelUUID,
-			Type:  coremodel.CAAS,
 		},
 	).Return(modelUUID, nil)
 

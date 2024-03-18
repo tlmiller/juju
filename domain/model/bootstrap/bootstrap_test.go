@@ -10,7 +10,6 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/cloud"
-	coremodel "github.com/juju/juju/core/model"
 	modeltesting "github.com/juju/juju/core/model/testing"
 	coreuser "github.com/juju/juju/core/user"
 	cloudbootstrap "github.com/juju/juju/domain/cloud/bootstrap"
@@ -74,7 +73,6 @@ func (s *bootstrapSuite) TestUUIDIsCreated(c *gc.C) {
 		},
 		Name:  "test",
 		Owner: s.adminUserUUID,
-		Type:  coremodel.IAAS,
 	})
 
 	err := fn(context.Background(), s.ControllerTxnRunner())
@@ -96,7 +94,6 @@ func (s *bootstrapSuite) TestUUIDIsRespected(c *gc.C) {
 		},
 		Name:  "test",
 		Owner: s.adminUserUUID,
-		Type:  coremodel.IAAS,
 		UUID:  modelUUID,
 	})
 
