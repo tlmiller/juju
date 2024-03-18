@@ -914,6 +914,12 @@ func (ctx *facadeContext) ServiceFactory() servicefactory.ServiceFactory {
 	return ctx.r.serviceFactory
 }
 
+// ServiceFactory returns the services factory getter so other models can be
+// reached.
+func (ctx *facadeContext) ServiceFactoryGetter() servicefactory.ServiceFactoryGetter {
+	return ctx.r.serviceFactoryGetter
+}
+
 // Tracer returns the tracer for the current model.
 func (ctx *facadeContext) Tracer() trace.Tracer {
 	return ctx.r.tracer
