@@ -11,7 +11,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/core/instance"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 func (s *serviceSuite) TestRetrieveHardwareCharacteristics(c *gc.C) {
@@ -35,7 +35,7 @@ func (s *serviceSuite) TestRetrieveHardwareCharacteristicsFails(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	s.state.EXPECT().HardwareCharacteristics(gomock.Any(), "42").
-		Return(nil, interrors.New("boom"))
+		Return(nil, errors.New("boom"))
 
 	hc, err := NewService(s.state).HardwareCharacteristics(context.Background(), "42")
 	c.Check(hc, gc.IsNil)
@@ -89,7 +89,7 @@ func (s *serviceSuite) TestSetMachineCloudInstanceFails(c *gc.C) {
 		instance.Id("instance-42"),
 		"42",
 		hc,
-	).Return(interrors.New("boom"))
+	).Return(errors.New("boom"))
 
 	err := NewService(s.state).SetMachineCloudInstance(context.Background(), "42", "instance-42", "42", hc)
 	c.Assert(err, gc.ErrorMatches, "setting machine cloud instance for machine \"42\": boom")
@@ -107,7 +107,7 @@ func (s *serviceSuite) TestDeleteMachineCloudInstance(c *gc.C) {
 func (s *serviceSuite) TestDeleteMachineCloudInstanceFails(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	s.state.EXPECT().DeleteMachineCloudInstance(gomock.Any(), "42").Return(interrors.New("boom"))
+	s.state.EXPECT().DeleteMachineCloudInstance(gomock.Any(), "42").Return(errors.New("boom"))
 
 	err := NewService(s.state).DeleteMachineCloudInstance(context.Background(), "42")
 	c.Assert(err, gc.ErrorMatches, "deleting machine cloud instance for machine \"42\": boom")

@@ -12,7 +12,7 @@ import (
 	coredatabase "github.com/juju/juju/core/database"
 	coreerrors "github.com/juju/juju/core/errors"
 	"github.com/juju/juju/domain"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State is a reference to the underlying data accessor for ModelConfig data.
@@ -32,7 +32,7 @@ func NewState(factory coredatabase.TxnRunnerFactory) *State {
 func (st *State) AgentVersion(ctx context.Context) (string, error) {
 	db, err := st.DB()
 	if err != nil {
-		return "", interrors.Capture(err)
+		return "", errors.Capture(err)
 	}
 
 	q := `SELECT &dbAgentVersion.target_agent_version FROM model`
@@ -41,20 +41,20 @@ func (st *State) AgentVersion(ctx context.Context) (string, error) {
 
 	stmt, err := st.Prepare(q, rval)
 	if err != nil {
-		return "", interrors.Capture(err)
+		return "", errors.Capture(err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt).Get(&rval)
-		if interrors.Is(err, sql.ErrNoRows) {
-			return interrors.Errorf("agent version %w", coreerrors.NotFound)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.Errorf("agent version %w", coreerrors.NotFound)
 		} else if err != nil {
-			return interrors.Errorf("retrieving current agent version: %w", err)
+			return errors.Errorf("retrieving current agent version: %w", err)
 		}
 		return nil
 	})
 	if err != nil {
-		return "", interrors.Capture(err)
+		return "", errors.Capture(err)
 	}
 
 	return rval.TargetAgentVersion, nil
@@ -73,21 +73,21 @@ func (st *State) ModelConfigHasAttributes(
 
 	db, err := st.DB()
 	if err != nil {
-		return rval, interrors.Capture(err)
+		return rval, errors.Capture(err)
 	}
 
 	stmt, err := st.Prepare(`
 SELECT &dbKey.key FROM model_config WHERE key IN ($dbKeys[:])
 `, dbKeys{}, dbKey{})
 	if err != nil {
-		return rval, interrors.Capture(err)
+		return rval, errors.Capture(err)
 	}
 
 	return rval, db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		var keys []dbKey
 		err := tx.Query(ctx, stmt, dbKeys(attrs)).GetAll(&keys)
 		if err != nil {
-			return interrors.Errorf("getting model config attrs set: %w", err)
+			return errors.Errorf("getting model config attrs set: %w", err)
 		}
 
 		rval = make([]string, len(keys))
@@ -104,18 +104,18 @@ func (st *State) ModelConfig(ctx context.Context) (map[string]string, error) {
 
 	db, err := st.DB()
 	if err != nil {
-		return config, interrors.Capture(err)
+		return config, errors.Capture(err)
 	}
 
 	stmt, err := st.Prepare(`SELECT &dbKeyValue.* FROM model_config`, dbKeyValue{})
 	if err != nil {
-		return config, interrors.Capture(err)
+		return config, errors.Capture(err)
 	}
 
 	return config, db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		var result []dbKeyValue
-		if err := tx.Query(ctx, stmt).GetAll(&result); err != nil && !interrors.Is(err, sql.ErrNoRows) {
-			return interrors.Capture(err)
+		if err := tx.Query(ctx, stmt).GetAll(&result); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return errors.Capture(err)
 		}
 
 		for _, kv := range result {
@@ -134,38 +134,38 @@ func (st *State) SetModelConfig(
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	selectQuery := `SELECT &dbKeyValue.* FROM model_config`
 	selectStmt, err := st.Prepare(selectQuery, dbKeyValue{})
 	if err != nil {
-		return interrors.Errorf("preparing select query: %w", err)
+		return errors.Errorf("preparing select query: %w", err)
 	}
 
 	insertQuery := `INSERT INTO model_config (*) VALUES ($dbKeyValue.*)`
 	insertStmt, err := st.Prepare(insertQuery, dbKeyValue{})
 	if err != nil {
-		return interrors.Errorf("preparing insert query: %w", err)
+		return errors.Errorf("preparing insert query: %w", err)
 	}
 
 	updateQuery := `UPDATE model_config SET value = $dbKeyValue.value WHERE key = $dbKeyValue.key`
 	updateStmt, err := st.Prepare(updateQuery, dbKeyValue{})
 	if err != nil {
-		return interrors.Errorf("preparing update query: %w", err)
+		return errors.Errorf("preparing update query: %w", err)
 	}
 
 	deleteQuery := `DELETE FROM model_config WHERE key IN ($dbKeys[:])`
 	deleteStmt, err := st.Prepare(deleteQuery, dbKeys{})
 	if err != nil {
-		return interrors.Errorf("preparing delete query: %w", err)
+		return errors.Errorf("preparing delete query: %w", err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		var keyValues []dbKeyValue
 		if err := tx.Query(ctx, selectStmt).GetAll(&keyValues); err != nil {
-			if !interrors.Is(err, sql.ErrNoRows) {
-				return interrors.Errorf("getting model config values: %w", err)
+			if !errors.Is(err, sql.ErrNoRows) {
+				return errors.Errorf("getting model config values: %w", err)
 			}
 		}
 
@@ -215,14 +215,14 @@ func (st *State) SetModelConfig(
 				insertKV = append(insertKV, dbKeyValue{Key: k, Value: v})
 			}
 			if err := tx.Query(ctx, insertStmt, insertKV).Run(); err != nil {
-				return interrors.Errorf("inserting model config values: %w", err)
+				return errors.Errorf("inserting model config values: %w", err)
 			}
 		}
 
 		// Update any keys that have changed.
 		for k, v := range update {
 			if err := tx.Query(ctx, updateStmt, dbKeyValue{Key: k, Value: v}).Run(); err != nil {
-				return interrors.Errorf("updating model config key %q: %w", k, err)
+				return errors.Errorf("updating model config key %q: %w", k, err)
 			}
 		}
 
@@ -233,7 +233,7 @@ func (st *State) SetModelConfig(
 				deleteKeys = append(deleteKeys, k)
 			}
 			if err := tx.Query(ctx, deleteStmt, deleteKeys).Run(); err != nil {
-				return interrors.Errorf("deleting model config keys: %w", err)
+				return errors.Errorf("deleting model config keys: %w", err)
 			}
 		}
 
@@ -251,12 +251,12 @@ func (st *State) UpdateModelConfig(
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	deleteStmt, err := st.Prepare(`DELETE FROM model_config WHERE key IN ($dbKeys[:])`, dbKeys{})
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	upsertStmt, err := st.Prepare(`
@@ -266,19 +266,19 @@ SET value = excluded.value
 WHERE key = excluded.key
 `[1:], dbKeyValue{})
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if len(removeAttrs) != 0 {
 			if err := tx.Query(ctx, deleteStmt, dbKeys(removeAttrs)).Run(); err != nil {
-				return interrors.Errorf("removing model config keys: %w", err)
+				return errors.Errorf("removing model config keys: %w", err)
 			}
 		}
 
 		for k, v := range updateAttrs {
 			if err := tx.Query(ctx, upsertStmt, dbKeyValue{Key: k, Value: v}).Run(); err != nil {
-				return interrors.Capture(err)
+				return errors.Capture(err)
 			}
 		}
 		return nil
@@ -289,20 +289,20 @@ WHERE key = excluded.key
 func (st *State) SpaceExists(ctx context.Context, spaceName string) (bool, error) {
 	db, err := st.DB()
 	if err != nil {
-		return false, interrors.Capture(err)
+		return false, errors.Capture(err)
 	}
 
 	stmt, err := st.Prepare(`SELECT &dbSpace.* FROM space WHERE name = $dbSpace.name`, dbSpace{})
 	if err != nil {
-		return false, interrors.Capture(err)
+		return false, errors.Capture(err)
 	}
 
 	var exists bool
 	return exists, db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		if err := tx.Query(ctx, stmt, dbSpace{Space: spaceName}).Get(&dbSpace{}); interrors.Is(err, sql.ErrNoRows) {
+		if err := tx.Query(ctx, stmt, dbSpace{Space: spaceName}).Get(&dbSpace{}); errors.Is(err, sql.ErrNoRows) {
 			return nil
 		} else if err != nil {
-			return interrors.Errorf("checking space %q exists %w", spaceName, err)
+			return errors.Errorf("checking space %q exists %w", spaceName, err)
 		}
 		exists = true
 		return nil

@@ -7,7 +7,7 @@ import (
 	"database/sql"
 
 	"github.com/juju/juju/core/upgrade"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // Info holds the information about database upgrade
@@ -26,7 +26,7 @@ type Info struct {
 func (i Info) ToUpgradeInfo() (upgrade.Info, error) {
 	state := upgrade.State(i.StateIDType)
 	if _, ok := upgrade.States[state]; !ok {
-		return upgrade.Info{}, interrors.Errorf("unknown state id %q", i)
+		return upgrade.Info{}, errors.Errorf("unknown state id %q", i)
 	}
 	result := upgrade.Info{
 		UUID:            i.UUID,

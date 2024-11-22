@@ -18,7 +18,7 @@ import (
 	"github.com/juju/juju/domain/model"
 	modelerrors "github.com/juju/juju/domain/model/errors"
 	secretbackenderrors "github.com/juju/juju/domain/secretbackend/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	jujusecrets "github.com/juju/juju/internal/secrets/provider/juju"
 	kubernetessecrets "github.com/juju/juju/internal/secrets/provider/kubernetes"
 )
@@ -197,7 +197,7 @@ func (s *Service) DefaultModelCloudNameAndCredential(
 	)
 
 	if err != nil {
-		return "", credential.Key{}, interrors.Errorf("getting default model cloud name and credential: %w", err)
+		return "", credential.Key{}, errors.Errorf("getting default model cloud name and credential: %w", err)
 	}
 	return cloudName, cred, nil
 }
@@ -231,14 +231,14 @@ func (s *Service) CreateModel(
 	args model.ModelCreationArgs,
 ) (coremodel.UUID, func(context.Context) error, error) {
 	if err := args.Validate(); err != nil {
-		return "", nil, interrors.Errorf(
+		return "", nil, errors.Errorf(
 			"cannot validate model creation args: %w", err)
 
 	}
 
 	modelID, err := coremodel.NewUUID()
 	if err != nil {
-		return "", nil, interrors.Errorf(
+		return "", nil, errors.Errorf(
 			"cannot generate id for model %q: %w", args.Name, err)
 
 	}
@@ -280,7 +280,7 @@ func (s *Service) createModel(
 ) (func(context.Context) error, error) {
 	modelType, err := ModelTypeForCloud(ctx, s.st, args.Cloud)
 	if err != nil {
-		return nil, interrors.Errorf(
+		return nil, errors.Errorf(
 			"determining model type when creating model %q: %w",
 			args.Name, err)
 
@@ -291,7 +291,7 @@ func (s *Service) createModel(
 	} else if args.SecretBackend == "" && modelType == coremodel.IAAS {
 		args.SecretBackend = jujusecrets.BackendName
 	} else if args.SecretBackend == "" {
-		return nil, interrors.Errorf(
+		return nil, errors.Errorf(
 			"%w for model type %q when creating model with name %q",
 			secretbackenderrors.NotFound,
 			modelType,
@@ -305,7 +305,7 @@ func (s *Service) createModel(
 	}
 
 	if err := validateAgentVersion(agentVersion, s.agentBinaryFinder); err != nil {
-		return nil, interrors.Errorf(
+		return nil, errors.Errorf(
 			"creating model %q with agent version %q: %w",
 			args.Name, agentVersion, err)
 
@@ -343,7 +343,7 @@ func (s *Service) ImportModel(
 	args model.ModelImportArgs,
 ) (func(context.Context) error, error) {
 	if err := args.Validate(); err != nil {
-		return nil, interrors.Errorf(
+		return nil, errors.Errorf(
 			"cannot validate model import args: %w", err)
 
 	}
@@ -352,7 +352,7 @@ func (s *Service) ImportModel(
 	// make sure we have tools to support the model and it will work with this
 	// controller.
 	if args.AgentVersion == version.Zero {
-		return nil, interrors.Errorf(
+		return nil, errors.Errorf(
 			"cannot import model with id %q, agent version cannot be zero: %w",
 			args.ID, modelerrors.AgentVersionNotSupported)
 
@@ -373,7 +373,7 @@ func (s *Service) ControllerModel(ctx context.Context) (coremodel.Model, error) 
 // - [modelerrors.ModelNotFound]: When the model does not exist.
 func (s *Service) Model(ctx context.Context, uuid coremodel.UUID) (coremodel.Model, error) {
 	if err := uuid.Validate(); err != nil {
-		return coremodel.Model{}, interrors.Errorf("model uuid: %w", err)
+		return coremodel.Model{}, errors.Errorf("model uuid: %w", err)
 	}
 
 	return s.st.GetModel(ctx, uuid)
@@ -383,7 +383,7 @@ func (s *Service) Model(ctx context.Context, uuid coremodel.UUID) (coremodel.Mod
 // for the model.
 func (s *Service) ModelType(ctx context.Context, uuid coremodel.UUID) (coremodel.ModelType, error) {
 	if err := uuid.Validate(); err != nil {
-		return "", interrors.Errorf("model type uuid: %w", err)
+		return "", errors.Errorf("model type uuid: %w", err)
 	}
 
 	return s.st.GetModelType(ctx, uuid)
@@ -404,13 +404,13 @@ func (s *Service) DeleteModel(
 	}
 
 	if err := uuid.Validate(); err != nil {
-		return interrors.Errorf("delete model, uuid: %w", err)
+		return errors.Errorf("delete model, uuid: %w", err)
 	}
 
 	// Delete common items from the model. This helps to ensure that the
 	// model is cleaned up correctly.
-	if err := s.st.Delete(ctx, uuid); err != nil && !interrors.Is(err, modelerrors.NotFound) {
-		return interrors.Errorf("delete model: %w", err)
+	if err := s.st.Delete(ctx, uuid); err != nil && !errors.Is(err, modelerrors.NotFound) {
+		return errors.Errorf("delete model: %w", err)
 	}
 
 	// If the db should not be deleted then we can return early.
@@ -424,7 +424,7 @@ func (s *Service) DeleteModel(
 	// supported in dqlite). For now we do a best effort to remove all items
 	// with in the db.
 	if err := s.modelDeleter.DeleteDB(uuid.String()); err != nil {
-		return interrors.Errorf("delete model: %w", err)
+		return errors.Errorf("delete model: %w", err)
 	}
 
 	return nil
@@ -436,7 +436,7 @@ func (s *Service) DeleteModel(
 func (s *Service) ListModelIDs(ctx context.Context) ([]coremodel.UUID, error) {
 	uuids, err := s.st.ListModelIDs(ctx)
 	if err != nil {
-		return nil, interrors.Errorf("retrieving model list %w", err)
+		return nil, errors.Errorf("retrieving model list %w", err)
 	}
 	return uuids, nil
 }
@@ -452,7 +452,7 @@ func (s *Service) ListAllModels(ctx context.Context) ([]coremodel.Model, error) 
 // an empty slice of models will be returned.
 func (s *Service) ListModelsForUser(ctx context.Context, userID coreuser.UUID) ([]coremodel.Model, error) {
 	if err := userID.Validate(); err != nil {
-		return nil, interrors.Errorf("listing models owned by user: %w", err)
+		return nil, errors.Errorf("listing models owned by user: %w", err)
 	}
 
 	return s.st.ListModelsForUser(ctx, userID)
@@ -468,7 +468,7 @@ func ModelTypeForCloud(
 ) (coremodel.ModelType, error) {
 	cloudType, err := state.CloudType(ctx, cloudName)
 	if err != nil {
-		return "", interrors.Errorf("determining model type from cloud: %w", err)
+		return "", errors.Errorf("determining model type from cloud: %w", err)
 	}
 
 	if set.NewStrings(caasCloudTypes...).Contains(cloudType) {
@@ -482,11 +482,11 @@ func ModelTypeForCloud(
 // If the model cannot be found it will return [modelerrors.NotFound].
 func (s *Service) GetModelUsers(ctx context.Context, modelUUID coremodel.UUID) ([]coremodel.ModelUserInfo, error) {
 	if err := modelUUID.Validate(); err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 	modelUserInfo, err := s.st.GetModelUsers(ctx, modelUUID)
 	if err != nil {
-		return nil, interrors.Errorf("getting users for model %s %w", modelUUID, err)
+		return nil, errors.Errorf("getting users for model %s %w", modelUUID, err)
 	}
 	return modelUserInfo, nil
 }
@@ -496,14 +496,14 @@ func (s *Service) GetModelUsers(ctx context.Context, modelUUID coremodel.UUID) (
 // If the user cannot be found it will return [modelerrors.UserNotFoundOnModel].
 func (s *Service) GetModelUser(ctx context.Context, modelUUID coremodel.UUID, name coreuser.Name) (coremodel.ModelUserInfo, error) {
 	if name.IsZero() {
-		return coremodel.ModelUserInfo{}, interrors.Errorf("empty username %w", accesserrors.UserNameNotValid)
+		return coremodel.ModelUserInfo{}, errors.Errorf("empty username %w", accesserrors.UserNameNotValid)
 	}
 	if err := modelUUID.Validate(); err != nil {
-		return coremodel.ModelUserInfo{}, interrors.Capture(err)
+		return coremodel.ModelUserInfo{}, errors.Capture(err)
 	}
 	modelUserInfo, err := s.st.GetModelUsers(ctx, modelUUID)
 	if err != nil {
-		return coremodel.ModelUserInfo{}, interrors.Errorf("getting info of user %q on model %s %w", name, modelUUID, err)
+		return coremodel.ModelUserInfo{}, errors.Errorf("getting info of user %q on model %s %w", name, modelUUID, err)
 	}
 
 	for _, mui := range modelUserInfo {
@@ -511,14 +511,14 @@ func (s *Service) GetModelUser(ctx context.Context, modelUUID coremodel.UUID, na
 			return mui, nil
 		}
 	}
-	return coremodel.ModelUserInfo{}, interrors.Errorf("getting info of user %q on model %s %w", name, modelUUID, modelerrors.UserNotFoundOnModel)
+	return coremodel.ModelUserInfo{}, errors.Errorf("getting info of user %q on model %s %w", name, modelUUID, modelerrors.UserNotFoundOnModel)
 }
 
 // ListModelSummariesForUser returns a slice of model summaries for a given
 // user. If no models are found an empty slice is returned.
 func (s *Service) ListModelSummariesForUser(ctx context.Context, userName coreuser.Name) ([]coremodel.UserModelSummary, error) {
 	if userName.IsZero() {
-		return nil, interrors.Errorf("empty username %w", accesserrors.UserNameNotValid)
+		return nil, errors.Errorf("empty username %w", accesserrors.UserNameNotValid)
 	}
 	return s.st.ListModelSummariesForUser(ctx, userName)
 }
@@ -543,10 +543,10 @@ func (s *Service) UpdateCredential(
 	key credential.Key,
 ) error {
 	if err := uuid.Validate(); err != nil {
-		return interrors.Errorf("updating cloud credential model uuid: %w", err)
+		return errors.Errorf("updating cloud credential model uuid: %w", err)
 	}
 	if err := key.Validate(); err != nil {
-		return interrors.Errorf("updating cloud credential: %w", err)
+		return errors.Errorf("updating cloud credential: %w", err)
 	}
 
 	return s.st.UpdateCredential(ctx, uuid, key)
@@ -574,7 +574,7 @@ func validateAgentVersion(
 	switch {
 	// agentVersion is greater than that of the current version.
 	case n > 0:
-		return interrors.Errorf(
+		return errors.Errorf(
 			"%w %q cannot be greater then the controller version %q",
 			modelerrors.AgentVersionNotSupported,
 			agentVersion.String(), jujuversion.Current.String())
@@ -583,13 +583,13 @@ func validateAgentVersion(
 	case n < 0:
 		has, err := agentFinder.HasBinariesForVersion(agentVersion)
 		if err != nil {
-			return interrors.Errorf(
+			return errors.Errorf(
 				"validating agent version %q for available tools: %w",
 				agentVersion.String(), err)
 
 		}
 		if !has {
-			return interrors.Errorf(
+			return errors.Errorf(
 				"%w %q no agent binaries found",
 				modelerrors.AgentVersionNotSupported,
 				agentVersion)

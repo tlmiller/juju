@@ -10,7 +10,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/environs/config"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/testing"
 )
 
@@ -43,7 +43,7 @@ func (*validatorsSuite) TestCharmhubURLChange(c *gc.C) {
 
 	var validationError *config.ValidationError
 	_, err = CharmhubURLChange()(context.Background(), newCfg, oldCfg)
-	c.Assert(interrors.As(err, &validationError), jc.IsTrue)
+	c.Assert(errors.As(err, &validationError), jc.IsTrue)
 	c.Assert(validationError.InvalidAttrs, gc.DeepEquals, []string{"charmhub-url"})
 }
 
@@ -87,7 +87,7 @@ func (*validatorsSuite) TestAgentVersionChanged(c *gc.C) {
 
 	var validationError *config.ValidationError
 	_, err = AgentVersionChange()(context.Background(), newCfg, oldCfg)
-	c.Assert(interrors.As(err, &validationError), jc.IsTrue)
+	c.Assert(errors.As(err, &validationError), jc.IsTrue)
 	c.Assert(validationError.InvalidAttrs, gc.DeepEquals, []string{"agent-version"})
 }
 
@@ -184,12 +184,12 @@ func (*validatorsSuite) TestSpaceCheckerNotFound(c *gc.C) {
 
 	_, err = SpaceChecker(provider)(context.Background(), newCfg, oldCfg)
 	var validationError *config.ValidationError
-	c.Assert(interrors.As(err, &validationError), jc.IsTrue)
+	c.Assert(errors.As(err, &validationError), jc.IsTrue)
 	c.Assert(validationError.InvalidAttrs, gc.DeepEquals, []string{"default-space"})
 }
 
 func (*validatorsSuite) TestSpaceCheckerError(c *gc.C) {
-	providerErr := interrors.New("some error")
+	providerErr := errors.New("some error")
 	provider := dummySpaceProviderFunc(func(ctx context.Context, s string) (bool, error) {
 		c.Assert(s, gc.Equals, "foobar")
 		return false, providerErr
@@ -255,7 +255,7 @@ func (*validatorsSuite) TestLoggincTracePermissionTrace(c *gc.C) {
 	c.Assert(err, jc.ErrorIs, ErrorLogTracingPermission)
 
 	var validationError *config.ValidationError
-	c.Assert(interrors.As(err, &validationError), jc.IsTrue)
+	c.Assert(errors.As(err, &validationError), jc.IsTrue)
 	c.Assert(validationError.InvalidAttrs, gc.DeepEquals, []string{"logging-config"})
 }
 
@@ -320,7 +320,7 @@ func (*validatorsSuite) TestContainerNetworkingMethodChanged(c *gc.C) {
 
 	_, err = ContainerNetworkingMethodChange()(context.Background(), newCfg, oldCfg)
 	var validationError *config.ValidationError
-	c.Assert(interrors.As(err, &validationError), jc.IsTrue)
+	c.Assert(errors.As(err, &validationError), jc.IsTrue)
 	c.Assert(validationError.InvalidAttrs, gc.DeepEquals, []string{"container-networking-method"})
 }
 

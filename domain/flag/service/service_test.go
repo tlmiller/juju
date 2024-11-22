@@ -12,7 +12,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	coreerrors "github.com/juju/juju/core/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type serviceSuite struct {
@@ -47,7 +47,7 @@ func (s *serviceSuite) TestGetFlag(c *gc.C) {
 func (s *serviceSuite) TestGetFlagNotFound(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	s.state.EXPECT().GetFlag(gomock.Any(), "foo").Return(false, interrors.Errorf("flag %w", coreerrors.NotFound))
+	s.state.EXPECT().GetFlag(gomock.Any(), "foo").Return(false, errors.Errorf("flag %w", coreerrors.NotFound))
 
 	service := NewService(s.state)
 	value, err := service.GetFlag(context.Background(), "foo")

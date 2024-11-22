@@ -5,7 +5,7 @@ package state
 
 import (
 	"github.com/juju/juju/domain/storage"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // These structs represent the persistent storage pool entity schema in the database.
@@ -37,7 +37,7 @@ type StoragePools []StoragePool
 func (rows StoragePools) toStoragePools(keyValues []poolAttribute) ([]storage.StoragePoolDetails, error) {
 	if n := len(rows); n != len(keyValues) {
 		// Should never happen.
-		return nil, interrors.New("row length mismatch")
+		return nil, errors.New("row length mismatch")
 	}
 
 	var result []storage.StoragePoolDetails

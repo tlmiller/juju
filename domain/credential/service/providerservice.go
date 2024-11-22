@@ -11,7 +11,7 @@ import (
 	corecredential "github.com/juju/juju/core/credential"
 	"github.com/juju/juju/core/watcher"
 	"github.com/juju/juju/domain/credential"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // ProviderState describes retrieval and persistence methods for storage.
@@ -46,11 +46,11 @@ func NewProviderService(st ProviderState) *ProviderService {
 // CloudCredential returns the cloud credential for the given tag.
 func (s *ProviderService) CloudCredential(ctx context.Context, key corecredential.Key) (cloud.Credential, error) {
 	if err := key.Validate(); err != nil {
-		return cloud.Credential{}, interrors.Errorf("invalid id getting cloud credential %w", err)
+		return cloud.Credential{}, errors.Errorf("invalid id getting cloud credential %w", err)
 	}
 	credInfo, err := s.st.CloudCredential(ctx, key)
 	if err != nil {
-		return cloud.Credential{}, interrors.Capture(err)
+		return cloud.Credential{}, errors.Capture(err)
 	}
 	cred := cloud.NewNamedCredential(credInfo.Label, cloud.AuthType(credInfo.AuthType), credInfo.Attributes, credInfo.Revoked)
 	cred.Invalid = credInfo.Invalid
@@ -80,7 +80,7 @@ func NewWatchableProviderService(st ProviderState, watcherFactory WatcherFactory
 // credential.
 func (s *WatchableProviderService) WatchCredential(ctx context.Context, key corecredential.Key) (watcher.NotifyWatcher, error) {
 	if err := key.Validate(); err != nil {
-		return nil, interrors.Errorf("invalid id watching cloud credential %w", err)
+		return nil, errors.Errorf("invalid id watching cloud credential %w", err)
 	}
 	return s.st.WatchCredential(ctx, s.watcherFactory.NewValueWatcher, key)
 }

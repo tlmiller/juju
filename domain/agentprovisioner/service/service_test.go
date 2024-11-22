@@ -17,7 +17,7 @@ import (
 	"github.com/juju/juju/core/instance"
 	modeltesting "github.com/juju/juju/core/model/testing"
 	"github.com/juju/juju/environs/config"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type suite struct {
@@ -93,7 +93,7 @@ func (s *suite) TestDetermineNetworkingMethodProviderNotSupported(c *gc.C) {
 		config.ContainerNetworkingMethodKey: "", // auto-configure
 	}, nil)
 	providerGetter := func(ctx context.Context) (Provider, error) {
-		return nil, interrors.Errorf("provider type %T %w", Provider(nil), coreerrors.NotSupported)
+		return nil, errors.Errorf("provider type %T %w", Provider(nil), coreerrors.NotSupported)
 	}
 
 	service := NewService(s.state, providerGetter)
@@ -145,7 +145,7 @@ func (s *suite) TestDetermineNetworkingMethodProviderReturnsNotSupported(c *gc.C
 	s.state.EXPECT().GetModelConfigKeyValues(gomock.Any(), gomock.Any()).Return(map[string]string{
 		config.ContainerNetworkingMethodKey: "", // auto-configure
 	}, nil)
-	s.provider.EXPECT().SupportsContainerAddresses(gomock.Any()).Return(false, interrors.Errorf("container addresses %w", coreerrors.NotSupported))
+	s.provider.EXPECT().SupportsContainerAddresses(gomock.Any()).Return(false, errors.Errorf("container addresses %w", coreerrors.NotSupported))
 
 	service := NewService(s.state, s.providerGetter)
 	method, err := service.ContainerNetworkingMethod(context.Background())

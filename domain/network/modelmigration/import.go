@@ -13,7 +13,7 @@ import (
 	"github.com/juju/juju/core/network"
 	"github.com/juju/juju/domain/network/service"
 	"github.com/juju/juju/domain/network/state"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // Coordinator is the interface that is used to add operations to a migration.
@@ -73,7 +73,7 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 		}
 		spaceID, err := i.importService.AddSpace(ctx, spaceInfo)
 		if err != nil {
-			return interrors.Errorf("creating space %s %w", space.Name(), err)
+			return errors.Errorf("creating space %s %w", space.Name(), err)
 		}
 		// Update the space IDs mapping, which we need for subnets
 		// import. We do this for the pre-4.0 migrations, where
@@ -101,7 +101,7 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 		if ok {
 			space, err := i.importService.Space(ctx, importedSpaceID)
 			if err != nil {
-				return interrors.Errorf("retrieving space with ID %s to import subnet %s %w", importedSpaceID, subnet.ID(), err)
+				return errors.Errorf("retrieving space with ID %s to import subnet %s %w", importedSpaceID, subnet.ID(), err)
 			}
 			subnetInfo.SpaceID = importedSpaceID
 			subnetInfo.SpaceName = string(space.Name)
@@ -110,7 +110,7 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 
 		_, err := i.importService.AddSubnet(ctx, subnetInfo)
 		if err != nil {
-			return interrors.Errorf("creating subnet %s %w", subnet.CIDR(), err)
+			return errors.Errorf("creating subnet %s %w", subnet.CIDR(), err)
 		}
 	}
 

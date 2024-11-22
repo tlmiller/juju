@@ -13,7 +13,7 @@ import (
 	"github.com/juju/juju/domain/blockcommand"
 	"github.com/juju/juju/domain/blockcommand/service"
 	"github.com/juju/juju/domain/blockcommand/state"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // RegisterExport registers the export operations with the given coordinator.
@@ -56,7 +56,7 @@ func (e *exportOperation) Setup(scope modelmigration.Scope) error {
 func (e *exportOperation) Execute(ctx context.Context, model description.Model) error {
 	blocks, err := e.service.GetBlocks(ctx)
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	migration := make(map[string]string)

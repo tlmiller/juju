@@ -18,7 +18,7 @@ import (
 	accesserrors "github.com/juju/juju/domain/access/errors"
 	"github.com/juju/juju/domain/access/service"
 	"github.com/juju/juju/domain/access/state"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // RegisterExport registers the export operations with the given coordinator.
@@ -78,12 +78,12 @@ func (e *exportOperation) Execute(ctx context.Context, model description.Model) 
 		Key:        modelUUID,
 	})
 	if err != nil {
-		return interrors.Errorf("getting user access on model %w", err)
+		return errors.Errorf("getting user access on model %w", err)
 	}
 	for _, userAccess := range userAccesses {
 		lastModelLogin, err := e.service.LastModelLogin(ctx, userAccess.UserName, coremodel.UUID(modelUUID))
-		if err != nil && !interrors.Is(err, accesserrors.UserNeverAccessedModel) {
-			return interrors.Errorf("getting user last login on model %w", err)
+		if err != nil && !errors.Is(err, accesserrors.UserNeverAccessedModel) {
+			return errors.Errorf("getting user last login on model %w", err)
 		}
 		userName := names.NewUserTag(userAccess.UserName.Name())
 		var createdBy names.UserTag

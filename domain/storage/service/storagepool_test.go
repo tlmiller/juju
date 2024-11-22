@@ -14,7 +14,7 @@ import (
 	coreerrors "github.com/juju/juju/core/errors"
 	domainstorage "github.com/juju/juju/domain/storage"
 	storageerrors "github.com/juju/juju/domain/storage/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 	"github.com/juju/juju/internal/storage"
 	"github.com/juju/juju/internal/storage/provider"
@@ -30,7 +30,7 @@ type storagePoolServiceSuite struct {
 
 var _ = gc.Suite(&storagePoolServiceSuite{})
 
-const validationError = interrors.ConstError("missing attribute foo")
+const validationError = errors.ConstError("missing attribute foo")
 
 func (s *storagePoolServiceSuite) setupMocks(c *gc.C) *gomock.Controller {
 	ctrl := gomock.NewController(c)

@@ -7,7 +7,7 @@ import (
 	"context"
 
 	coreerrors "github.com/juju/juju/core/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State describes retrieval and persistence methods for storage.
@@ -37,7 +37,7 @@ func (s *Service) SetFlag(ctx context.Context, flag string, value bool, descript
 // GetFlag returns the value of a flag.
 func (s *Service) GetFlag(ctx context.Context, flag string) (bool, error) {
 	value, err := s.st.GetFlag(ctx, flag)
-	if err != nil && !interrors.Is(err, coreerrors.NotFound) {
+	if err != nil && !errors.Is(err, coreerrors.NotFound) {
 		return false, err
 	}
 	return value, nil

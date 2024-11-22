@@ -8,7 +8,6 @@ import (
 	"database/sql"
 
 	"github.com/canonical/sqlair"
-	"github.com/juju/errors"
 	"github.com/juju/version/v2"
 
 	"github.com/juju/juju/core/credential"
@@ -1500,8 +1499,7 @@ AND cloud_region_uuid IS NULL
 	} else if num != 1 {
 		return interrors.Errorf(
 			"model %q already has a cloud region set%w",
-			uuid,
-			errors.Hide(coreerrors.AlreadyExists))
+			uuid).Add(coreerrors.AlreadyExists)
 
 	}
 	return nil
@@ -1590,7 +1588,7 @@ AND cc.name = $dbCredKey.cloud_credential_name
 	if interrors.Is(err, sqlair.ErrNoRows) {
 		return interrors.Errorf(
 			"%w cloud credential %q%w",
-			coreerrors.NotFound, key, errors.Hide(err))
+			coreerrors.NotFound, key).Add(err)
 
 	} else if err != nil {
 		return interrors.Errorf(

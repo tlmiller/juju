@@ -14,7 +14,7 @@ import (
 	"github.com/juju/juju/domain/cloud/state"
 	modelconfigservice "github.com/juju/juju/domain/modelconfig/service"
 	internaldatabase "github.com/juju/juju/internal/database"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/uuid"
 )
 
@@ -23,11 +23,11 @@ func InsertCloud(ownerName user.Name, cloud cloud.Cloud) internaldatabase.Bootst
 	return func(ctx context.Context, controller, model database.TxnRunner) error {
 		cloudUUID, err := uuid.NewUUID()
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
-		return interrors.Capture(controller.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		return errors.Capture(controller.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 			if err := state.CreateCloud(ctx, tx, ownerName, cloudUUID.String(), cloud); err != nil {
-				return interrors.Errorf("creating bootstrap cloud %w", err)
+				return errors.Errorf("creating bootstrap cloud %w", err)
 			}
 			return nil
 		}))
@@ -47,7 +47,7 @@ func SetCloudDefaults(
 	return func(ctx context.Context, controller, model database.TxnRunner) error {
 		strDefaults, err := modelconfigservice.CoerceConfigForStorage(defaults)
 		if err != nil {
-			return interrors.Errorf("coercing cloud %q default values for storage: %w", cloudName, err)
+			return errors.Errorf("coercing cloud %q default values for storage: %w", cloudName, err)
 		}
 
 		err = controller.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
@@ -55,7 +55,7 @@ func SetCloudDefaults(
 		})
 
 		if err != nil {
-			return interrors.Errorf("setting cloud %q bootstrap defaults: %w", cloudName, err)
+			return errors.Errorf("setting cloud %q bootstrap defaults: %w", cloudName, err)
 		}
 		return nil
 	}

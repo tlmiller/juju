@@ -10,7 +10,7 @@ import (
 	"github.com/canonical/sqlair"
 
 	"github.com/juju/juju/domain/cloudimagemetadata"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // retrieveMetadataFromDB retrieves all metadata from the cloud_image_metadata database table.
@@ -36,7 +36,7 @@ image_id
  FROM cloud_image_metadata
  JOIN architecture arch on cloud_image_metadata.architecture_id = arch.id`)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 		defer func() { _ = rows.Close() }()
 		for rows.Next() {
@@ -54,11 +54,11 @@ image_id
 				&dbMetadata.Arch,
 				&dbMetadata.ImageID,
 			); err != nil {
-				return interrors.Capture(err)
+				return errors.Capture(err)
 			}
 			metadata = append(metadata, dbMetadata)
 		}
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	})
 }
 

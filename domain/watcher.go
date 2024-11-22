@@ -10,7 +10,7 @@ import (
 	"github.com/juju/juju/core/logger"
 	"github.com/juju/juju/core/watcher"
 	"github.com/juju/juju/core/watcher/eventsource"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // WatchableDBFactory is a function that returns a WatchableDB or an error.
@@ -39,7 +39,7 @@ func (f *WatcherFactory) NewUUIDsWatcher(
 	tableName string, changeMask changestream.ChangeType,
 ) (watcher.StringsWatcher, error) {
 	w, err := f.NewNamespaceWatcher(tableName, changeMask, eventsource.InitialNamespaceChanges("SELECT uuid from "+tableName))
-	return w, interrors.Capture(err)
+	return w, errors.Capture(err)
 }
 
 // NewNamespaceWatcher returns a new namespace watcher
@@ -50,7 +50,7 @@ func (f *WatcherFactory) NewNamespaceWatcher(
 ) (watcher.StringsWatcher, error) {
 	base, err := f.newBaseWatcher()
 	if err != nil {
-		return nil, interrors.Errorf("creating base watcher %w", err)
+		return nil, errors.Errorf("creating base watcher %w", err)
 	}
 
 	return eventsource.NewNamespaceWatcher(base, namespace, changeMask, initialStateQuery), nil
@@ -65,7 +65,7 @@ func (f *WatcherFactory) NewNamespaceMapperWatcher(
 ) (watcher.StringsWatcher, error) {
 	base, err := f.newBaseWatcher()
 	if err != nil {
-		return nil, interrors.Errorf("creating base watcher %w", err)
+		return nil, errors.Errorf("creating base watcher %w", err)
 	}
 
 	return eventsource.NewNamespaceMapperWatcher(
@@ -81,7 +81,7 @@ func (f *WatcherFactory) NewNamespaceNotifyWatcher(
 ) (watcher.NotifyWatcher, error) {
 	base, err := f.newBaseWatcher()
 	if err != nil {
-		return nil, interrors.Errorf("creating base watcher %w", err)
+		return nil, errors.Errorf("creating base watcher %w", err)
 	}
 
 	return eventsource.NewNamespaceNotifyWatcher(base, namespace, changeMask), nil
@@ -94,7 +94,7 @@ func (f *WatcherFactory) NewNamespaceNotifyMapperWatcher(
 ) (watcher.NotifyWatcher, error) {
 	base, err := f.newBaseWatcher()
 	if err != nil {
-		return nil, interrors.Errorf("creating base watcher %w", err)
+		return nil, errors.Errorf("creating base watcher %w", err)
 	}
 
 	return eventsource.NewNamespaceNotifyMapperWatcher(base, namespace, changeMask, mapper), nil
@@ -107,7 +107,7 @@ func (f *WatcherFactory) NewValueWatcher(
 ) (watcher.NotifyWatcher, error) {
 	base, err := f.newBaseWatcher()
 	if err != nil {
-		return nil, interrors.Errorf("creating base watcher %w", err)
+		return nil, errors.Errorf("creating base watcher %w", err)
 	}
 
 	return eventsource.NewValueWatcher(base, namespace, changeValue, changeMask), nil
@@ -122,7 +122,7 @@ func (f *WatcherFactory) NewValueMapperWatcher(
 ) (watcher.NotifyWatcher, error) {
 	base, err := f.newBaseWatcher()
 	if err != nil {
-		return nil, interrors.Errorf("creating base watcher %w", err)
+		return nil, errors.Errorf("creating base watcher %w", err)
 	}
 
 	return eventsource.NewValueMapperWatcher(base, namespace, changeValue, changeMask, mapper), nil
@@ -135,7 +135,7 @@ func (f *WatcherFactory) newBaseWatcher() (*eventsource.BaseWatcher, error) {
 	if f.watchableDB == nil {
 		var err error
 		if f.watchableDB, err = f.getDB(); err != nil {
-			return nil, interrors.Capture(err)
+			return nil, errors.Capture(err)
 		}
 	}
 

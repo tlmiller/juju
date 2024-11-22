@@ -10,7 +10,6 @@ import (
 
 	"github.com/canonical/sqlair"
 	"github.com/juju/collections/transform"
-	"github.com/juju/errors"
 
 	coreapplication "github.com/juju/juju/core/application"
 	corecharm "github.com/juju/juju/core/charm"
@@ -323,7 +322,7 @@ func (st *ApplicationState) deleteApplication(ctx context.Context, tx *sqlair.TX
 		return interrors.Errorf("querying units for application %q %w", name, err)
 	}
 	if numUnits := result.Count; numUnits > 0 {
-		return interrors.Errorf("cannot delete application %q as it still has %d unit(s)%w", name, numUnits, errors.Hide(applicationerrors.ApplicationHasUnits))
+		return interrors.Errorf("cannot delete application %q as it still has %d unit(s)%w", name, numUnits).Add(applicationerrors.ApplicationHasUnits)
 	}
 
 	// TODO(units) - fix these tables to allow deletion of rows
@@ -399,7 +398,7 @@ func (st *ApplicationState) GetUnitUUID(ctx domain.AtomicContext, unitName coreu
 	err = domain.Run(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err = tx.Query(ctx, getUnitStmt, unit).Get(&unit)
 		if interrors.Is(err, sqlair.ErrNoRows) {
-			return interrors.Errorf("unit %q not found%w", unitName, errors.Hide(applicationerrors.UnitNotFound))
+			return interrors.Errorf("unit %q not found%w", unitName).Add(applicationerrors.UnitNotFound)
 		}
 		if err != nil {
 			return interrors.Errorf("querying unit %q: %w", unitName, err)
@@ -507,7 +506,7 @@ func (st *ApplicationState) getUnit(ctx domain.AtomicContext, unitName coreunit.
 	err = domain.Run(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err = tx.Query(ctx, getUnitStmt, unit).Get(&unit)
 		if interrors.Is(err, sqlair.ErrNoRows) {
-			return interrors.Errorf("unit %q not found%w", unitName, errors.Hide(applicationerrors.UnitNotFound))
+			return interrors.Errorf("unit %q not found%w", unitName).Add(applicationerrors.UnitNotFound)
 		}
 		return interrors.Capture(err)
 	})
@@ -549,7 +548,7 @@ func (st *ApplicationState) InsertUnit(
 	var err error
 	_, err = st.getUnit(ctx, args.UnitName)
 	if err == nil {
-		return interrors.Errorf("unit %q already exists%w", args.UnitName, errors.Hide(applicationerrors.UnitAlreadyExists))
+		return interrors.Errorf("unit %q already exists%w", args.UnitName).Add(applicationerrors.UnitAlreadyExists)
 	}
 	if !interrors.Is(err, applicationerrors.UnitNotFound) {
 		return interrors.Errorf("looking up unit %q %w", args.UnitName, err)
@@ -869,7 +868,7 @@ WHERE u.name = $minimalUnit.name
 		var count unitCount
 		err = tx.Query(ctx, peerCountStmt, unit).Get(&count)
 		if interrors.Is(err, sqlair.ErrNoRows) {
-			return interrors.Errorf("unit %q not found%w", unitName, errors.Hide(applicationerrors.UnitNotFound))
+			return interrors.Errorf("unit %q not found%w", unitName).Add(applicationerrors.UnitNotFound)
 		}
 		if err != nil {
 			return interrors.Errorf("querying peer count for unit %q %w", unitName, err)
@@ -1271,7 +1270,7 @@ AND life_id < $minimalUnit.life_id
 	err = domain.Run(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt, unit).Get(&unit)
 		if interrors.Is(err, sqlair.ErrNoRows) {
-			return interrors.Errorf("unit %q not found%w", unitName, errors.Hide(applicationerrors.UnitNotFound))
+			return interrors.Errorf("unit %q not found%w", unitName).Add(applicationerrors.UnitNotFound)
 		} else if err != nil {
 			return interrors.Errorf("querying unit %q %w", unitName, err)
 		}

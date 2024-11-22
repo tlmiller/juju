@@ -19,7 +19,7 @@ import (
 	coresecrets "github.com/juju/juju/core/secrets"
 	jujuversion "github.com/juju/juju/core/version"
 	databasetesting "github.com/juju/juju/internal/database/testing"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type schemaSuite struct {
@@ -742,7 +742,7 @@ WHERE edit_type_id = ? AND namespace_id = ?;`[1:], editType, namespaceID)
 		defer func() { _ = rows.Close() }()
 
 		if !rows.Next() {
-			return interrors.Errorf("no rows returned")
+			return errors.Errorf("no rows returned")
 		}
 		return rows.Scan(&count)
 	})

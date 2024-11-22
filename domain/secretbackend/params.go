@@ -7,7 +7,7 @@ import (
 	"time"
 
 	backenderrors "github.com/juju/juju/domain/secretbackend/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // BackendIdentifier is used to identify a secret backend.
@@ -36,22 +36,22 @@ type CreateSecretBackendParams struct {
 // Validate checks that the parameters are valid.
 func (p CreateSecretBackendParams) Validate() error {
 	if p.ID == "" {
-		return interrors.Errorf("%w: ID is missing", backenderrors.NotValid)
+		return errors.Errorf("%w: ID is missing", backenderrors.NotValid)
 	}
 	if p.Name == "" {
-		return interrors.Errorf("%w: name is missing", backenderrors.NotValid)
+		return errors.Errorf("%w: name is missing", backenderrors.NotValid)
 	}
 	if p.BackendType == "" {
-		return interrors.Errorf("%w: type is missing", backenderrors.NotValid)
+		return errors.Errorf("%w: type is missing", backenderrors.NotValid)
 	}
 	for k, v := range p.Config {
 		if k == "" {
-			return interrors.Errorf(
+			return errors.Errorf(
 				"%w: empty config key for %q", backenderrors.NotValid, p.Name)
 
 		}
 		if v == "" {
-			return interrors.Errorf(
+			return errors.Errorf(
 				"%w: empty config value for %q", backenderrors.NotValid, p.Name)
 
 		}
@@ -73,23 +73,23 @@ func (p UpdateSecretBackendParams) Validate() error {
 	if p.ID == "" && p.Name == "" {
 		// We need at least one identifier.
 		// So we can identify the secret backend to update by ID or name.
-		return interrors.Errorf("%w: both ID and name are missing", backenderrors.NotValid)
+		return errors.Errorf("%w: both ID and name are missing", backenderrors.NotValid)
 	}
 	if p.ID != "" && p.Name != "" {
 		// We just need one identifier.
-		return interrors.Errorf("%w: both ID and name are set", backenderrors.NotValid)
+		return errors.Errorf("%w: both ID and name are set", backenderrors.NotValid)
 	}
 	if p.NewName != nil && *p.NewName == "" {
-		return interrors.Errorf("%w: name cannot be set to empty", backenderrors.NotValid)
+		return errors.Errorf("%w: name cannot be set to empty", backenderrors.NotValid)
 	}
 	for k, v := range p.Config {
 		if k == "" {
-			return interrors.Errorf(
+			return errors.Errorf(
 				"%w: empty config key for %q", backenderrors.NotValid, p.ID)
 
 		}
 		if v == "" {
-			return interrors.Errorf(
+			return errors.Errorf(
 				"%w: empty config value for %q", backenderrors.NotValid, p.ID)
 
 		}

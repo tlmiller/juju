@@ -16,7 +16,7 @@ import (
 	corepermission "github.com/juju/juju/core/permission"
 	usertesting "github.com/juju/juju/core/user/testing"
 	"github.com/juju/juju/domain/access"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/uuid"
 )
 
@@ -134,7 +134,7 @@ func (s *serviceSuite) TestReadUserAccessForTargetError(c *gc.C) {
 			ObjectType: "faileme",
 			Key:        "aws",
 		})
-	c.Assert(interrors.Is(err, coreerrors.NotValid), jc.IsTrue, gc.Commentf("%+v", err))
+	c.Assert(errors.Is(err, coreerrors.NotValid), jc.IsTrue, gc.Commentf("%+v", err))
 }
 
 func (s *serviceSuite) TestReadUserAccessLevelForTarget(c *gc.C) {

@@ -31,7 +31,7 @@ import (
 	secretservice "github.com/juju/juju/domain/secret/service"
 	"github.com/juju/juju/domain/secretbackend"
 	secretbackenderrors "github.com/juju/juju/domain/secretbackend/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 	"github.com/juju/juju/internal/secrets/provider"
 	"github.com/juju/juju/internal/secrets/provider/juju"
@@ -67,7 +67,7 @@ func (providerWithConfig) ConfigDefaults() schema.Defaults {
 
 func (p providerWithConfig) ValidateConfig(oldCfg, newCfg provider.ConfigAttrs) error {
 	if p.Type() == "something" {
-		return interrors.Errorf("bad config for %q", p.Type())
+		return errors.Errorf("bad config for %q", p.Type())
 	}
 	return nil
 }
@@ -341,7 +341,7 @@ func (s *serviceSuite) TestBackendSummaryInfoForModel(c *gc.C) {
 			},
 		},
 	}).DoAndReturn(func(cfg *provider.ModelBackendConfig) (provider.SecretsBackend, error) {
-		s.mockSepicalSecretProvider.EXPECT().Ping().Return(interrors.New("boom")).Times(1)
+		s.mockSepicalSecretProvider.EXPECT().Ping().Return(errors.New("boom")).Times(1)
 		return s.mockSepicalSecretProvider, nil
 	})
 	s.mockRegistry.EXPECT().NewBackend(&provider.ModelBackendConfig{
@@ -462,7 +462,7 @@ func (s *serviceSuite) assertBackendSummaryInfo(
 				},
 			},
 		}).DoAndReturn(func(cfg *provider.ModelBackendConfig) (provider.SecretsBackend, error) {
-			s.mockSepicalSecretProvider.EXPECT().Ping().Return(interrors.New("boom")).Times(1)
+			s.mockSepicalSecretProvider.EXPECT().Ping().Return(errors.New("boom")).Times(1)
 			return s.mockSepicalSecretProvider, nil
 		})
 	}
@@ -1356,7 +1356,7 @@ func (s *serviceSuite) TestRotateBackendTokenRetry(c *gc.C) {
 			"endpoint": "http://vault",
 			"token":    "3h20m0s",
 		},
-	}).Return("", interrors.New("BOOM"))
+	}).Return("", errors.New("BOOM"))
 
 	now := s.clock.Now()
 	// On error, try again after a short time.

@@ -12,7 +12,7 @@ import (
 	"github.com/juju/juju/core/user"
 	"github.com/juju/juju/domain/access"
 	accesserrors "github.com/juju/juju/domain/access/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/uuid"
 )
 
@@ -33,14 +33,14 @@ func NewPermissionService(st PermissionState) *PermissionService {
 // are passed through from the spec validation and state layer.
 func (s *PermissionService) CreatePermission(ctx context.Context, spec corepermission.UserAccessSpec) (corepermission.UserAccess, error) {
 	if err := spec.Validate(); err != nil {
-		return corepermission.UserAccess{}, interrors.Capture(err)
+		return corepermission.UserAccess{}, errors.Capture(err)
 	}
 	newUUID, err := uuid.NewUUID()
 	if err != nil {
-		return corepermission.UserAccess{}, interrors.Capture(err)
+		return corepermission.UserAccess{}, errors.Capture(err)
 	}
 	userAccess, err := s.st.CreatePermission(ctx, newUUID, spec)
-	return userAccess, interrors.Capture(err)
+	return userAccess, errors.Capture(err)
 }
 
 // DeletePermission removes the given user's access to the given target.
@@ -48,12 +48,12 @@ func (s *PermissionService) CreatePermission(ctx context.Context, spec corepermi
 // the target is not valid. Any errors from the state layer are passed through.
 func (s *PermissionService) DeletePermission(ctx context.Context, subject user.Name, target corepermission.ID) error {
 	if subject.IsZero() {
-		return interrors.Capture(interrors.Errorf("empty subject %w", coreerrors.NotValid))
+		return errors.Capture(errors.Errorf("empty subject %w", coreerrors.NotValid))
 	}
 	if err := target.Validate(); err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
-	return interrors.Capture(s.st.DeletePermission(ctx, subject, target))
+	return errors.Capture(s.st.DeletePermission(ctx, subject, target))
 }
 
 // ReadUserAccessForTarget returns the user access for the given user on
@@ -62,13 +62,13 @@ func (s *PermissionService) DeletePermission(ctx context.Context, subject user.N
 // layer are passed through.
 func (s *PermissionService) ReadUserAccessForTarget(ctx context.Context, subject user.Name, target corepermission.ID) (corepermission.UserAccess, error) {
 	if subject.IsZero() {
-		return corepermission.UserAccess{}, interrors.Capture(interrors.Errorf("empty subject %w", coreerrors.NotValid))
+		return corepermission.UserAccess{}, errors.Capture(errors.Errorf("empty subject %w", coreerrors.NotValid))
 	}
 	if err := target.Validate(); err != nil {
-		return corepermission.UserAccess{}, interrors.Capture(err)
+		return corepermission.UserAccess{}, errors.Capture(err)
 	}
 	userAccess, err := s.st.ReadUserAccessForTarget(ctx, subject, target)
-	return userAccess, interrors.Capture(err)
+	return userAccess, errors.Capture(err)
 }
 
 // EnsureExternalUserIfAuthorized checks if an external user is missing from the
@@ -77,16 +77,16 @@ func (s *PermissionService) ReadUserAccessForTarget(ctx context.Context, subject
 // inherited their permissions from everyone@external.
 func (s *PermissionService) EnsureExternalUserIfAuthorized(ctx context.Context, subject user.Name, target corepermission.ID) error {
 	if subject.IsZero() {
-		return interrors.Capture(interrors.Errorf("empty subject %w", coreerrors.NotValid))
+		return errors.Capture(errors.Errorf("empty subject %w", coreerrors.NotValid))
 	}
 	if err := target.Validate(); err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 	err := s.st.EnsureExternalUserIfAuthorized(ctx, subject, target)
-	if interrors.Is(err, accesserrors.UserNotFound) {
-		return interrors.Capture(err)
+	if errors.Is(err, accesserrors.UserNotFound) {
+		return errors.Capture(err)
 	}
-	return interrors.Capture(err)
+	return errors.Capture(err)
 }
 
 // ReadUserAccessLevelForTarget returns the user access level for the
@@ -97,13 +97,13 @@ func (s *PermissionService) EnsureExternalUserIfAuthorized(ctx context.Context, 
 // [accesserrors.AccessNotFound] is returned.
 func (s *PermissionService) ReadUserAccessLevelForTarget(ctx context.Context, subject user.Name, target corepermission.ID) (corepermission.Access, error) {
 	if subject.IsZero() {
-		return "", interrors.Capture(interrors.Errorf("empty subject %w", coreerrors.NotValid))
+		return "", errors.Capture(errors.Errorf("empty subject %w", coreerrors.NotValid))
 	}
 	if err := target.Validate(); err != nil {
-		return "", interrors.Capture(err)
+		return "", errors.Capture(err)
 	}
 	access, err := s.st.ReadUserAccessLevelForTarget(ctx, subject, target)
-	return access, interrors.Capture(err)
+	return access, errors.Capture(err)
 }
 
 // ReadAllUserAccessForTarget return a slice of user access for all users
@@ -111,10 +111,10 @@ func (s *PermissionService) ReadUserAccessLevelForTarget(ctx context.Context, su
 // target is not valid. Any errors from the state layer are passed through.
 func (s *PermissionService) ReadAllUserAccessForTarget(ctx context.Context, target corepermission.ID) ([]corepermission.UserAccess, error) {
 	if err := target.Validate(); err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 	userAccess, err := s.st.ReadAllUserAccessForTarget(ctx, target)
-	return userAccess, interrors.Capture(err)
+	return userAccess, errors.Capture(err)
 }
 
 // ReadAllUserAccessForUser returns a slice of the user access the given
@@ -123,10 +123,10 @@ func (s *PermissionService) ReadAllUserAccessForTarget(ctx context.Context, targ
 // passed through.
 func (s *PermissionService) ReadAllUserAccessForUser(ctx context.Context, subject user.Name) ([]corepermission.UserAccess, error) {
 	if subject.IsZero() {
-		return nil, interrors.Capture(interrors.Errorf("empty subject %w", coreerrors.NotValid))
+		return nil, errors.Capture(errors.Errorf("empty subject %w", coreerrors.NotValid))
 	}
 	userAccess, err := s.st.ReadAllUserAccessForUser(ctx, subject)
-	return userAccess, interrors.Capture(err)
+	return userAccess, errors.Capture(err)
 }
 
 // ReadAllAccessForUserAndObjectType returns a slice of user access for the
@@ -136,13 +136,13 @@ func (s *PermissionService) ReadAllUserAccessForUser(ctx context.Context, subjec
 // E.G. All clouds the user has access to.
 func (s *PermissionService) ReadAllAccessForUserAndObjectType(ctx context.Context, subject user.Name, objectType corepermission.ObjectType) ([]corepermission.UserAccess, error) {
 	if subject.IsZero() {
-		return nil, interrors.Capture(interrors.Errorf("empty subject %w", coreerrors.NotValid))
+		return nil, errors.Capture(errors.Errorf("empty subject %w", coreerrors.NotValid))
 	}
 	if err := objectType.Validate(); err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 	userAccess, err := s.st.ReadAllAccessForUserAndObjectType(ctx, subject, objectType)
-	return userAccess, interrors.Capture(err)
+	return userAccess, errors.Capture(err)
 }
 
 // UpdatePermission updates the permission on the target for the given subject
@@ -155,14 +155,14 @@ func (s *PermissionService) ReadAllAccessForUserAndObjectType(ctx context.Contex
 // granted an access level greater or equal to what they already have.
 func (s *PermissionService) UpdatePermission(ctx context.Context, args access.UpdatePermissionArgs) error {
 	if err := args.Validate(); err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
-	return interrors.Capture(s.st.UpdatePermission(ctx, args))
+	return errors.Capture(s.st.UpdatePermission(ctx, args))
 }
 
 // AllModelAccessForCloudCredential for a given (cloud) credential key, return all
 // model name and model access level combinations.
 func (s *PermissionService) AllModelAccessForCloudCredential(ctx context.Context, key credential.Key) ([]access.CredentialOwnerModelAccess, error) {
 	results, err := s.st.AllModelAccessForCloudCredential(ctx, key)
-	return results, interrors.Capture(err)
+	return results, errors.Capture(err)
 }

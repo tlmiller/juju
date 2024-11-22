@@ -10,7 +10,7 @@ import (
 	"github.com/juju/juju/core/crossmodel"
 	coreerrors "github.com/juju/juju/core/errors"
 	"github.com/juju/juju/core/watcher"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State describes retrieval and persistence methods for storage.
@@ -62,7 +62,7 @@ func (s *Service) Controller(
 	controllerUUID string,
 ) (*crossmodel.ControllerInfo, error) {
 	controllerInfo, err := s.st.Controller(ctx, controllerUUID)
-	return controllerInfo, interrors.Errorf("retrieving external controller %s %w", controllerUUID, err)
+	return controllerInfo, errors.Errorf("retrieving external controller %s %w", controllerUUID, err)
 }
 
 // ControllerForModel returns the controller record that's associated
@@ -74,11 +74,11 @@ func (s *Service) ControllerForModel(
 	controllers, err := s.st.ControllersForModels(ctx, modelUUID)
 
 	if err != nil {
-		return nil, interrors.Errorf("retrieving external controller for model %s %w", modelUUID, err)
+		return nil, errors.Errorf("retrieving external controller for model %s %w", modelUUID, err)
 	}
 
 	if len(controllers) == 0 {
-		return nil, interrors.Errorf("external controller for model %q %w", modelUUID, coreerrors.NotFound)
+		return nil, errors.Errorf("external controller for model %q %w", modelUUID, coreerrors.NotFound)
 	}
 
 	return &controllers[0], nil
@@ -90,7 +90,7 @@ func (s *Service) UpdateExternalController(
 	ctx context.Context, ec crossmodel.ControllerInfo,
 ) error {
 	err := s.st.UpdateExternalController(ctx, ec)
-	return interrors.Errorf("updating external controller state %w", err)
+	return errors.Errorf("updating external controller state %w", err)
 }
 
 // ImportExternalControllers imports the list of MigrationControllerInfo
@@ -109,7 +109,7 @@ func (s *Service) ModelsForController(
 	controllerUUID string,
 ) ([]string, error) {
 	models, err := s.st.ModelsForController(ctx, controllerUUID)
-	return models, interrors.Errorf("retrieving model UUIDs for controller %s %w", controllerUUID, err)
+	return models, errors.Errorf("retrieving model UUIDs for controller %s %w", controllerUUID, err)
 }
 
 // ControllersForModels returns the list of controllers which
@@ -148,5 +148,5 @@ func (s *WatchableService) Watch() (watcher.StringsWatcher, error) {
 			changestream.Create|changestream.Update,
 		)
 	}
-	return nil, interrors.Errorf("external controller watcher %w", coreerrors.NotYetAvailable)
+	return nil, errors.Errorf("external controller watcher %w", coreerrors.NotYetAvailable)
 }

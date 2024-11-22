@@ -14,7 +14,7 @@ import (
 	"github.com/juju/juju/core/model"
 	"github.com/juju/juju/domain"
 	modelerrors "github.com/juju/juju/domain/model/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State is responsible for retrieving a model's running agent version from
@@ -36,7 +36,7 @@ func NewState(factory database.TxnRunnerFactory) *State {
 func (st *State) GetModelTargetAgentVersion(ctx context.Context, modelID model.UUID) (version.Number, error) {
 	db, err := st.DB()
 	if err != nil {
-		return version.Zero, interrors.Capture(err)
+		return version.Zero, errors.Capture(err)
 	}
 
 	q := `
@@ -52,25 +52,25 @@ WHERE uuid = $M.model_id
 
 	stmt, err := st.Prepare(q, rval, args)
 	if err != nil {
-		return version.Zero, interrors.Errorf("preparing agent version query for model with ID %q: %w", modelID, err)
+		return version.Zero, errors.Errorf("preparing agent version query for model with ID %q: %w", modelID, err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt, args).Get(&rval)
-		if interrors.Is(err, sql.ErrNoRows) {
-			return interrors.Errorf("%w for id %q", modelerrors.NotFound, modelID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.Errorf("%w for id %q", modelerrors.NotFound, modelID)
 		} else if err != nil {
-			return interrors.Errorf("cannot get agent version for model with ID %q: %w", modelID, err)
+			return errors.Errorf("cannot get agent version for model with ID %q: %w", modelID, err)
 		}
 		return nil
 	})
 	if err != nil {
-		return version.Zero, interrors.Capture(err)
+		return version.Zero, errors.Capture(err)
 	}
 
 	vers, err := version.Parse(rval.TargetAgentVersion)
 	if err != nil {
-		return version.Zero, interrors.Errorf("cannot parse agent version %q for model with ID %q: %w", rval.TargetAgentVersion, modelID, err)
+		return version.Zero, errors.Errorf("cannot parse agent version %q for model with ID %q: %w", rval.TargetAgentVersion, modelID, err)
 	}
 	return vers, nil
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/juju/juju/core/secrets"
 	domainsecret "github.com/juju/juju/domain/secret"
 	secreterrors "github.com/juju/juju/domain/secret/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // GetSecretConsumerAndLatest returns the secret consumer info for the specified unit and secret, along with
@@ -22,7 +22,7 @@ import (
 func (s *SecretService) GetSecretConsumerAndLatest(ctx context.Context, uri *secrets.URI, unitName string) (*secrets.SecretConsumerMetadata, int, error) {
 	consumerMetadata, latestRevision, err := s.secretState.GetSecretConsumer(ctx, uri, unitName)
 	if err != nil {
-		return nil, latestRevision, interrors.Capture(err)
+		return nil, latestRevision, errors.Capture(err)
 	}
 	if consumerMetadata.Label != "" {
 		return consumerMetadata, latestRevision, nil
@@ -30,12 +30,12 @@ func (s *SecretService) GetSecretConsumerAndLatest(ctx context.Context, uri *sec
 	// We allow units to access the application owned secrets using the application owner label,
 	// so we copy the owner label to consumer metadata.
 	md, err := s.getAppOwnedOrUnitOwnedSecretMetadata(ctx, uri, unitName, "")
-	if interrors.Is(err, secreterrors.SecretNotFound) {
+	if errors.Is(err, secreterrors.SecretNotFound) {
 		// The secret is owned by a different application; the named unit is the consumer.
 		return consumerMetadata, latestRevision, nil
 	}
 	if err != nil {
-		return nil, 0, interrors.Errorf("cannot get secret metadata for %q %w", uri, err)
+		return nil, 0, errors.Errorf("cannot get secret metadata for %q %w", uri, err)
 	}
 	consumerMetadata.Label = md.Label
 	return consumerMetadata, latestRevision, nil
@@ -69,8 +69,8 @@ func (s *SecretService) GetURIByConsumerLabel(ctx context.Context, label string,
 // the label associated with the secret for the consumer.
 func (s *SecretService) GetConsumedRevision(ctx context.Context, uri *secrets.URI, unitName string, refresh, peek bool, labelToUpdate *string) (int, error) {
 	consumerInfo, latestRevision, err := s.GetSecretConsumerAndLatest(ctx, uri, unitName)
-	if err != nil && !interrors.Is(err, secreterrors.SecretConsumerNotFound) {
-		return 0, interrors.Capture(err)
+	if err != nil && !errors.Is(err, secreterrors.SecretConsumerNotFound) {
+		return 0, errors.Capture(err)
 	}
 	refresh = refresh ||
 		err != nil // Not found, so need to create one.
@@ -96,7 +96,7 @@ func (s *SecretService) GetConsumedRevision(ctx context.Context, uri *secrets.UR
 			consumerInfo.Label = *labelToUpdate
 		}
 		if err := s.SaveSecretConsumer(ctx, uri, unitName, consumerInfo); err != nil {
-			return 0, interrors.Capture(err)
+			return 0, errors.Capture(err)
 		}
 	}
 	return wantRevision, nil
@@ -121,7 +121,7 @@ func (s *SecretService) ListGrantedSecretsForBackend(
 		case ModelAccessor:
 			accessor.SubjectTypeID = domainsecret.SubjectModel
 		default:
-			return nil, interrors.Errorf("consumer kind %q %w", consumer.Kind, coreerrors.NotValid)
+			return nil, errors.Errorf("consumer kind %q %w", consumer.Kind, coreerrors.NotValid)
 		}
 		accessors[i] = accessor
 	}
@@ -132,8 +132,8 @@ func (s *SecretService) ListGrantedSecretsForBackend(
 // updating the tracked revision for the specified consumer if refresh is true.
 func (s *SecretService) UpdateRemoteConsumedRevision(ctx context.Context, uri *secrets.URI, unitName string, refresh bool) (int, error) {
 	consumerInfo, latestRevision, err := s.secretState.GetSecretRemoteConsumer(ctx, uri, unitName)
-	if err != nil && !interrors.Is(err, secreterrors.SecretConsumerNotFound) {
-		return 0, interrors.Capture(err)
+	if err != nil && !errors.Is(err, secreterrors.SecretConsumerNotFound) {
+		return 0, errors.Capture(err)
 	}
 	refresh = refresh ||
 		err != nil // Not found, so need to create one.
@@ -144,7 +144,7 @@ func (s *SecretService) UpdateRemoteConsumedRevision(ctx context.Context, uri *s
 		}
 		consumerInfo.CurrentRevision = latestRevision
 		if err := s.secretState.SaveSecretRemoteConsumer(ctx, uri, unitName, consumerInfo); err != nil {
-			return 0, interrors.Capture(err)
+			return 0, errors.Capture(err)
 		}
 	}
 	return latestRevision, nil

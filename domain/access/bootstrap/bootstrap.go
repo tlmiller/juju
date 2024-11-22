@@ -15,7 +15,7 @@ import (
 	"github.com/juju/juju/domain/access/state"
 	"github.com/juju/juju/internal/auth"
 	internaldatabase "github.com/juju/juju/internal/database"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // AddUserWithPassword is responsible for adding a new user in the system at
@@ -28,32 +28,32 @@ func AddUserWithPassword(name user.Name, password auth.Password, access permissi
 	defer password.Destroy()
 
 	if name.IsZero() {
-		return "", bootstrapErr(interrors.Errorf("%q %w", name, usererrors.UserNameNotValid))
+		return "", bootstrapErr(errors.Errorf("%q %w", name, usererrors.UserNameNotValid))
 	}
 
 	uuid, err := user.NewUUID()
 	if err != nil {
-		return "", bootstrapErr(interrors.Errorf(
+		return "", bootstrapErr(errors.Errorf(
 			"generating uuid for bootstrap add user %q with password: %w",
 			name, err))
 	}
 
 	salt, err := auth.NewSalt()
 	if err != nil {
-		return "", bootstrapErr(interrors.Errorf(
+		return "", bootstrapErr(errors.Errorf(
 			"generating salt for bootstrap add user %q with password: %w",
 			name, err))
 	}
 
 	pwHash, err := auth.HashPassword(password, salt)
 	if err != nil {
-		return "", bootstrapErr(interrors.Errorf(
+		return "", bootstrapErr(errors.Errorf(
 			"generating password hash for bootstrap add user %q with password: %w",
 			name, err))
 	}
 
 	return uuid, func(ctx context.Context, controller, model database.TxnRunner) error {
-		return interrors.Capture(controller.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		return errors.Capture(controller.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 			if err = state.AddUserWithPassword(
 				ctx, tx,
 				uuid,
@@ -62,7 +62,7 @@ func AddUserWithPassword(name user.Name, password auth.Password, access permissi
 				access,
 				pwHash, salt,
 			); err != nil {
-				return interrors.Errorf("adding bootstrap user %q with password: %w",
+				return errors.Errorf("adding bootstrap user %q with password: %w",
 					name, err)
 
 			}

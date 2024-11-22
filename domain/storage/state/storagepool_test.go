@@ -14,7 +14,7 @@ import (
 	"github.com/juju/juju/domain/schema/testing"
 	domainstorage "github.com/juju/juju/domain/storage"
 	storageerrors "github.com/juju/juju/domain/storage/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type storagePoolSuite struct {
@@ -92,7 +92,7 @@ func (s *storagePoolSuite) TestUpdateCloudCredentialMissingName(c *gc.C) {
 	}
 	ctx := context.Background()
 	err := st.CreateStoragePool(ctx, sp)
-	c.Assert(interrors.Is(err, storageerrors.MissingPoolNameError), jc.IsTrue)
+	c.Assert(errors.Is(err, storageerrors.MissingPoolNameError), jc.IsTrue)
 }
 
 func (s *storagePoolSuite) TestUpdateCloudCredentialMissingProvider(c *gc.C) {
@@ -103,7 +103,7 @@ func (s *storagePoolSuite) TestUpdateCloudCredentialMissingProvider(c *gc.C) {
 	}
 	ctx := context.Background()
 	err := st.CreateStoragePool(ctx, sp)
-	c.Assert(interrors.Is(err, storageerrors.MissingPoolTypeError), jc.IsTrue)
+	c.Assert(errors.Is(err, storageerrors.MissingPoolTypeError), jc.IsTrue)
 }
 
 func (s *storagePoolSuite) TestReplaceStoragePool(c *gc.C) {

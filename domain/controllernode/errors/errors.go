@@ -3,10 +3,10 @@
 
 package errors
 
-import interrors "github.com/juju/juju/internal/errors"
+import "github.com/juju/juju/internal/errors"
 
 const (
 	// NotFound describes an error that occurs when a controller cannot be
 	// found.
-	NotFound = interrors.ConstError("controller not found")
+	NotFound = errors.ConstError("controller not found")
 )

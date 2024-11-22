@@ -16,7 +16,7 @@ import (
 	"github.com/juju/juju/core/watcher/eventsource"
 	"github.com/juju/juju/domain/upgrade"
 	upgradeerrors "github.com/juju/juju/domain/upgrade/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State describes retrieval and persistence methods for upgrade info.
@@ -53,7 +53,7 @@ func NewService(st State, wf WatcherFactory) *Service {
 // If an upgrade is already running/pending, return an AlreadyExists err
 func (s *Service) CreateUpgrade(ctx context.Context, previousVersion, targetVersion version.Number) (upgrade.UUID, error) {
 	if previousVersion.Compare(targetVersion) >= 0 {
-		return "", interrors.Errorf("target version %q must be greater than current version %q %w", targetVersion, previousVersion, coreerrors.NotValid)
+		return "", errors.Errorf("target version %q must be greater than current version %q %w", targetVersion, previousVersion, coreerrors.NotValid)
 	}
 	return s.st.CreateUpgrade(ctx, previousVersion, targetVersion)
 }
@@ -63,7 +63,7 @@ func (s *Service) CreateUpgrade(ctx context.Context, previousVersion, targetVers
 // before an upgrade can start
 func (s *Service) SetControllerReady(ctx context.Context, upgradeUUID upgrade.UUID, controllerID string) error {
 	if err := upgradeUUID.Validate(); err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 	err := s.st.SetControllerReady(ctx, upgradeUUID, controllerID)
 	return err
@@ -72,7 +72,7 @@ func (s *Service) SetControllerReady(ctx context.Context, upgradeUUID upgrade.UU
 // StartUpgrade starts the current upgrade if it exists
 func (s *Service) StartUpgrade(ctx context.Context, upgradeUUID upgrade.UUID) error {
 	if err := upgradeUUID.Validate(); err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 	return s.st.StartUpgrade(ctx, upgradeUUID)
 }
@@ -82,7 +82,7 @@ func (s *Service) StartUpgrade(ctx context.Context, upgradeUUID upgrade.UUID) er
 // last provisioned controller, the upgrade will be archived.
 func (s *Service) SetControllerDone(ctx context.Context, upgradeUUID upgrade.UUID, controllerID string) error {
 	if err := upgradeUUID.Validate(); err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 	return s.st.SetControllerDone(ctx, upgradeUUID, controllerID)
 }
@@ -90,7 +90,7 @@ func (s *Service) SetControllerDone(ctx context.Context, upgradeUUID upgrade.UUI
 // SetDBUpgradeCompleted marks the upgrade as completed in the database
 func (s *Service) SetDBUpgradeCompleted(ctx context.Context, upgradeUUID upgrade.UUID) error {
 	if err := upgradeUUID.Validate(); err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 	return s.st.SetDBUpgradeCompleted(ctx, upgradeUUID)
 }
@@ -99,7 +99,7 @@ func (s *Service) SetDBUpgradeCompleted(ctx context.Context, upgradeUUID upgrade
 // Manual intervention will be required if this has been invoked.
 func (s *Service) SetDBUpgradeFailed(ctx context.Context, upgradeUUID upgrade.UUID) error {
 	if err := upgradeUUID.Validate(); err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 	return s.st.SetDBUpgradeFailed(ctx, upgradeUUID)
 }
@@ -113,7 +113,7 @@ func (s *Service) ActiveUpgrade(ctx context.Context) (upgrade.UUID, error) {
 // UpgradeInfo returns the upgrade info for the supplied upgradeUUID
 func (s *Service) UpgradeInfo(ctx context.Context, upgradeUUID upgrade.UUID) (coreupgrade.Info, error) {
 	if err := upgradeUUID.Validate(); err != nil {
-		return coreupgrade.Info{}, interrors.Capture(err)
+		return coreupgrade.Info{}, errors.Capture(err)
 	}
 	return s.st.UpgradeInfo(ctx, upgradeUUID)
 }
@@ -126,11 +126,11 @@ func (s *Service) IsUpgrading(ctx context.Context) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if interrors.Is(err, upgradeerrors.NotFound) {
+	if errors.Is(err, upgradeerrors.NotFound) {
 		return false, nil
 	}
 
-	return false, interrors.Capture(err)
+	return false, errors.Capture(err)
 }
 
 // WatchableService provides the API for working with upgrade info
@@ -153,14 +153,14 @@ func NewWatchableService(st State, wf WatcherFactory) *WatchableService {
 // nodes have been registered, meaning the upgrade is ready to start.
 func (s *WatchableService) WatchForUpgradeReady(ctx context.Context, upgradeUUID upgrade.UUID) (watcher.NotifyWatcher, error) {
 	if err := upgradeUUID.Validate(); err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 
 	mask := changestream.Create | changestream.Update
 	mapper := func(ctx context.Context, db coredatabase.TxnRunner, changes []changestream.ChangeEvent) ([]changestream.ChangeEvent, error) {
 		ready, err := s.st.AllProvisionedControllersReady(ctx, upgradeUUID)
 		if err != nil {
-			return nil, interrors.Capture(err)
+			return nil, errors.Capture(err)
 		}
 		// Only dispatch if all controllers are ready.
 		if ready {
@@ -175,14 +175,14 @@ func (s *WatchableService) WatchForUpgradeReady(ctx context.Context, upgradeUUID
 // has reached the given state.
 func (s *WatchableService) WatchForUpgradeState(ctx context.Context, upgradeUUID upgrade.UUID, state coreupgrade.State) (watcher.NotifyWatcher, error) {
 	if err := upgradeUUID.Validate(); err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 
 	mask := changestream.Create | changestream.Update
 	mapper := func(ctx context.Context, db coredatabase.TxnRunner, changes []changestream.ChangeEvent) ([]changestream.ChangeEvent, error) {
 		info, err := s.st.UpgradeInfo(ctx, upgradeUUID)
 		if err != nil {
-			return nil, interrors.Capture(err)
+			return nil, errors.Capture(err)
 		}
 		if info.State == state {
 			return changes, nil

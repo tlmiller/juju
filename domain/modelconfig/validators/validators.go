@@ -10,7 +10,7 @@ import (
 	"github.com/juju/loggo/v2"
 
 	"github.com/juju/juju/environs/config"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // CharmhubURLChange returns a config validator that will check to make sure
@@ -55,7 +55,7 @@ func AgentVersionChange() config.ValidatorFunc {
 
 		cfg, err := cfg.Remove([]string{config.AgentVersionKey})
 		if err != nil {
-			return cfg, interrors.Errorf("removing agent version key from model config: %w", err)
+			return cfg, errors.Errorf("removing agent version key from model config: %w", err)
 		}
 		return cfg, nil
 	}
@@ -112,7 +112,7 @@ func SpaceChecker(provider SpaceProvider) config.ValidatorFunc {
 
 		has, err := provider.HasSpace(ctx, spaceName)
 		if err != nil {
-			return cfg, interrors.Errorf("checking for space %q existence to validate model config: %w", spaceName, err)
+			return cfg, errors.Errorf("checking for space %q existence to validate model config: %w", spaceName, err)
 		}
 
 		if !has {
@@ -130,7 +130,7 @@ const (
 	// ErrorLogTracingPermission is a specific error to indicate that trace
 	// level logging cannot be enabled within model config because the user
 	// requesting the change does not have adequate permission.
-	ErrorLogTracingPermission = interrors.ConstError("permission denied setting log level to tracing")
+	ErrorLogTracingPermission = errors.ConstError("permission denied setting log level to tracing")
 )
 
 // LoggingTracePermissionChecker checks the logging config for both validity and
@@ -166,7 +166,7 @@ func LoggingTracePermissionChecker(canTrace bool) config.ValidatorFunc {
 		}
 
 		if !canTrace && haveTrace {
-			return cfg, interrors.Errorf(
+			return cfg, errors.Errorf(
 				"%w %w",
 				ErrorLogTracingPermission,
 				&config.ValidationError{

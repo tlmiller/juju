@@ -18,7 +18,7 @@ import (
 	usertesting "github.com/juju/juju/core/user/testing"
 	"github.com/juju/juju/core/watcher/watchertest"
 	"github.com/juju/juju/domain/credential"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 	jujutesting "github.com/juju/juju/internal/testing"
 )
@@ -247,7 +247,7 @@ func (s *serviceSuite) TestUpdateCredentialsModelsError(c *gc.C) {
 		Name:  "foobar",
 	}
 
-	s.state.EXPECT().ModelsUsingCloudCredential(gomock.Any(), key).Return(nil, interrors.New("cannot get models"))
+	s.state.EXPECT().ModelsUsingCloudCredential(gomock.Any(), key).Return(nil, errors.New("cannot get models"))
 
 	var legacyUpdated bool
 	service := s.service(c).
@@ -336,7 +336,7 @@ func (s *serviceSuite) TestRevokeCredentialsModelsError(c *gc.C) {
 		Name:  "foobar",
 	}
 
-	s.state.EXPECT().ModelsUsingCloudCredential(gomock.Any(), key).Return(nil, interrors.New("cannot get models"))
+	s.state.EXPECT().ModelsUsingCloudCredential(gomock.Any(), key).Return(nil, errors.New("cannot get models"))
 
 	var legacyUpdated bool
 	service := s.service(c).

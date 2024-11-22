@@ -17,7 +17,7 @@ import (
 	"github.com/juju/juju/core/status"
 	"github.com/juju/juju/domain/life"
 	machineerrors "github.com/juju/juju/domain/machine/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type serviceSuite struct {
@@ -48,7 +48,7 @@ func (s *serviceSuite) TestCreateMachineSuccess(c *gc.C) {
 func (s *serviceSuite) TestCreateMachineError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().CreateMachine(gomock.Any(), cmachine.Name("666"), gomock.Any(), gomock.Any()).Return(rErr)
 
 	_, err := NewService(s.state).CreateMachine(context.Background(), "666")
@@ -85,7 +85,7 @@ func (s *serviceSuite) TestCreateMachineWithParentSuccess(c *gc.C) {
 func (s *serviceSuite) TestCreateMachineWithParentError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().CreateMachineWithParent(gomock.Any(), cmachine.Name("666"), cmachine.Name("parent"), gomock.Any(), gomock.Any()).Return(rErr)
 
 	_, err := NewService(s.state).CreateMachineWithParent(context.Background(), cmachine.Name("666"), cmachine.Name("parent"))
@@ -134,7 +134,7 @@ func (s *serviceSuite) TestDeleteMachineSuccess(c *gc.C) {
 func (s *serviceSuite) TestDeleteMachineError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().DeleteMachine(gomock.Any(), cmachine.Name("666")).Return(rErr)
 
 	err := NewService(s.state).DeleteMachine(context.Background(), "666")
@@ -159,7 +159,7 @@ func (s *serviceSuite) TestGetLifeSuccess(c *gc.C) {
 func (s *serviceSuite) TestGetLifeError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().GetMachineLife(gomock.Any(), cmachine.Name("666")).Return(nil, rErr)
 
 	l, err := NewService(s.state).GetMachineLife(context.Background(), "666")
@@ -197,7 +197,7 @@ func (s *serviceSuite) TestSetMachineLifeSuccess(c *gc.C) {
 func (s *serviceSuite) TestSetMachineLifeError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().SetMachineLife(gomock.Any(), cmachine.Name("666"), life.Alive).Return(rErr)
 
 	err := NewService(s.state).SetMachineLife(context.Background(), "666", life.Alive)
@@ -233,7 +233,7 @@ func (s *serviceSuite) TestEnsureDeadMachineSuccess(c *gc.C) {
 func (s *serviceSuite) TestEnsureDeadMachineError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().SetMachineLife(gomock.Any(), cmachine.Name("666"), life.Dead).Return(rErr)
 
 	err := NewService(s.state).EnsureDeadMachine(context.Background(), "666")
@@ -255,7 +255,7 @@ func (s *serviceSuite) TestListAllMachinesSuccess(c *gc.C) {
 func (s *serviceSuite) TestListAllMachinesError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().AllMachineNames(gomock.Any()).Return(nil, rErr)
 
 	machines, err := NewService(s.state).AllMachineNames(context.Background())
@@ -278,7 +278,7 @@ func (s *serviceSuite) TestInstanceIdSuccess(c *gc.C) {
 func (s *serviceSuite) TestInstanceIdError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().InstanceID(gomock.Any(), "deadbeef-0bad-400d-8000-4b1d0d06f00d").Return("", rErr)
 
 	instanceId, err := NewService(s.state).InstanceID(context.Background(), "deadbeef-0bad-400d-8000-4b1d0d06f00d")
@@ -317,7 +317,7 @@ func (s *serviceSuite) TestGetMachineStatusSuccess(c *gc.C) {
 func (s *serviceSuite) TestGetMachineStatusError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().GetMachineStatus(gomock.Any(), cmachine.Name("666")).Return(status.StatusInfo{}, rErr)
 
 	machineStatus, err := NewService(s.state).GetMachineStatus(context.Background(), "666")
@@ -342,7 +342,7 @@ func (s *serviceSuite) TestSetMachineStatusError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	newStatus := status.StatusInfo{Status: status.Started}
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().SetMachineStatus(gomock.Any(), cmachine.Name("666"), newStatus).Return(rErr)
 
 	err := NewService(s.state).SetMachineStatus(context.Background(), "666", newStatus)
@@ -373,7 +373,7 @@ func (s *serviceSuite) TestGetInstanceStatusSuccess(c *gc.C) {
 func (s *serviceSuite) TestGetInstanceStatusError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().GetInstanceStatus(gomock.Any(), cmachine.Name("666")).Return(status.StatusInfo{}, rErr)
 
 	instanceStatus, err := NewService(s.state).GetInstanceStatus(context.Background(), "666")
@@ -398,7 +398,7 @@ func (s *serviceSuite) TestSetInstanceStatusSuccess(c *gc.C) {
 func (s *serviceSuite) TestSetInstanceStatusError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	newStatus := status.StatusInfo{Status: status.Running}
 	s.state.EXPECT().SetInstanceStatus(gomock.Any(), cmachine.Name("666"), newStatus).Return(rErr)
 
@@ -429,7 +429,7 @@ func (s *serviceSuite) TestIsControllerSuccess(c *gc.C) {
 func (s *serviceSuite) TestIsControllerError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().IsMachineController(gomock.Any(), cmachine.Name("666")).Return(false, rErr)
 
 	isController, err := NewService(s.state).IsMachineController(context.Background(), cmachine.Name("666"))
@@ -464,7 +464,7 @@ func (s *serviceSuite) TestRequireMachineRebootSuccess(c *gc.C) {
 func (s *serviceSuite) TestRequireMachineRebootError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().RequireMachineReboot(gomock.Any(), "u-u-i-d").Return(rErr)
 
 	err := NewService(s.state).RequireMachineReboot(context.Background(), "u-u-i-d")
@@ -486,7 +486,7 @@ func (s *serviceSuite) TestClearMachineRebootSuccess(c *gc.C) {
 func (s *serviceSuite) TestClearMachineRebootError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().ClearMachineReboot(gomock.Any(), "u-u-i-d").Return(rErr)
 
 	err := NewService(s.state).ClearMachineReboot(context.Background(), "u-u-i-d")
@@ -518,7 +518,7 @@ func (s *serviceSuite) TestIsMachineRebootSuccessMachineDontNeedReboot(c *gc.C) 
 func (s *serviceSuite) TestIsMachineRebootError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().IsMachineRebootRequired(gomock.Any(), "u-u-i-d").Return(false, rErr)
 
 	_, err := NewService(s.state).IsMachineRebootRequired(context.Background(), "u-u-i-d")
@@ -543,7 +543,7 @@ func (s *serviceSuite) TestGetMachineParentUUIDSuccess(c *gc.C) {
 func (s *serviceSuite) TestGetMachineParentUUIDError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().GetMachineParentUUID(gomock.Any(), "666").Return("", rErr)
 
 	parentUUID, err := NewService(s.state).GetMachineParentUUID(context.Background(), "666")
@@ -620,7 +620,7 @@ func (s *serviceSuite) TestMachineShouldRebootOrShutdownShutdown(c *gc.C) {
 func (s *serviceSuite) TestMachineShouldRebootOrShutdownError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().ShouldRebootOrShutdown(gomock.Any(), "u-u-i-d").Return(cmachine.ShouldDoNothing, rErr)
 
 	_, err := NewService(s.state).ShouldRebootOrShutdown(context.Background(), "u-u-i-d")
@@ -656,7 +656,7 @@ func (s *serviceSuite) TestMarkMachineForRemovalMachineNotFoundError(c *gc.C) {
 func (s *serviceSuite) TestMarkMachineForRemovalError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().MarkMachineForRemoval(gomock.Any(), cmachine.Name("666")).Return(rErr)
 
 	err := NewService(s.state).MarkMachineForRemoval(context.Background(), cmachine.Name("666"))
@@ -680,7 +680,7 @@ func (s *serviceSuite) TestGetAllMachineRemovalsSuccess(c *gc.C) {
 func (s *serviceSuite) TestGetAllMachineRemovalsError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().GetAllMachineRemovals(gomock.Any()).Return(nil, rErr)
 
 	machineRemovals, err := NewService(s.state).GetAllMachineRemovals(context.Background())
@@ -726,7 +726,7 @@ func (s *serviceSuite) TestLXDProfilesSuccess(c *gc.C) {
 func (s *serviceSuite) TestLXDProfilesError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().AppliedLXDProfileNames(gomock.Any(), "666").Return(nil, rErr)
 
 	_, err := NewService(s.state).AppliedLXDProfileNames(context.Background(), "666")
@@ -745,7 +745,7 @@ func (s *serviceSuite) TestSetLXDProfilesSuccess(c *gc.C) {
 func (s *serviceSuite) TestSetLXDProfilesError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	rErr := interrors.New("boom")
+	rErr := errors.New("boom")
 	s.state.EXPECT().SetAppliedLXDProfileNames(gomock.Any(), "666", []string{"profile1", "profile2"}).Return(rErr)
 
 	err := NewService(s.state).SetAppliedLXDProfileNames(context.Background(), "666", []string{"profile1", "profile2"})

@@ -12,7 +12,7 @@ import (
 	"github.com/juju/juju/core/modelmigration"
 	"github.com/juju/juju/domain/externalcontroller/service"
 	"github.com/juju/juju/domain/externalcontroller/state"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // RegisterExport registers the export operations with the given coordinator.
@@ -79,7 +79,7 @@ func (e *exportOperation) Execute(ctx context.Context, model description.Model) 
 
 	controllers, err := e.service.ControllersForModels(ctx, sourceModelUUIDs...)
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	for _, controller := range controllers {

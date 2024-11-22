@@ -12,7 +12,7 @@ import (
 	"github.com/juju/juju/core/modelmigration"
 	"github.com/juju/juju/domain/externalcontroller/service"
 	"github.com/juju/juju/domain/externalcontroller/state"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // Coordinator is the interface that is used to add operations to a migration.
@@ -70,5 +70,5 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 	}
 
 	err := i.service.ImportExternalControllers(ctx, controllers)
-	return interrors.Errorf("cannot import external controllers %w", err)
+	return errors.Errorf("cannot import external controllers %w", err)
 }

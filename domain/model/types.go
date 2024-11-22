@@ -10,7 +10,7 @@ import (
 	coreerrors "github.com/juju/juju/core/errors"
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/core/user"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/uuid"
 )
 
@@ -51,17 +51,17 @@ type ModelCreationArgs struct {
 // error satisfying [errors.NotValid] is returned.
 func (m ModelCreationArgs) Validate() error {
 	if m.Cloud == "" {
-		return interrors.Errorf("%w cloud cannot be empty", coreerrors.NotValid)
+		return errors.Errorf("%w cloud cannot be empty", coreerrors.NotValid)
 	}
 	if m.Name == "" {
-		return interrors.Errorf("%w name cannot be empty", coreerrors.NotValid)
+		return errors.Errorf("%w name cannot be empty", coreerrors.NotValid)
 	}
 	if err := m.Owner.Validate(); err != nil {
-		return interrors.Errorf("%w owner: %w", coreerrors.NotValid, err)
+		return errors.Errorf("%w owner: %w", coreerrors.NotValid, err)
 	}
 	if !m.Credential.IsZero() {
 		if err := m.Credential.Validate(); err != nil {
-			return interrors.Errorf("credential: %w", err)
+			return errors.Errorf("credential: %w", err)
 		}
 	}
 	return nil
@@ -83,11 +83,11 @@ type ModelImportArgs struct {
 // satisfying [errors.NotValid] is returned.
 func (m ModelImportArgs) Validate() error {
 	if err := m.ModelCreationArgs.Validate(); err != nil {
-		return interrors.Errorf("ModelCreationArgs %w", err)
+		return errors.Errorf("ModelCreationArgs %w", err)
 	}
 
 	if err := m.ID.Validate(); err != nil {
-		return interrors.Errorf("validating model import args id: %w", err)
+		return errors.Errorf("validating model import args id: %w", err)
 	}
 
 	return nil

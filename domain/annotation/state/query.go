@@ -10,7 +10,7 @@ import (
 
 	"github.com/juju/juju/core/annotations"
 	annotationerrors "github.com/juju/juju/domain/annotation/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // getAnnotationQueryForID provides a query for the given id, based on
@@ -24,7 +24,7 @@ func getAnnotationQueryForID(id annotations.ID) (string, error) {
 
 	kindName, err := kindNameFromID(id)
 	if err != nil {
-		return "", interrors.Capture(err)
+		return "", errors.Capture(err)
 	}
 	return fmt.Sprintf(`
 SELECT (key, value) AS (&Annotation.*)
@@ -46,7 +46,7 @@ VALUES ($Annotation.*)
 
 	kindName, err := kindNameFromID(id)
 	if err != nil {
-		return "", interrors.Capture(err)
+		return "", errors.Capture(err)
 	}
 	return fmt.Sprintf(`
 INSERT INTO annotation_%s (uuid, key, value)
@@ -62,7 +62,7 @@ func deleteAnnotationsQueryForID(id annotations.ID) (string, error) {
 	} else {
 		kindName, err := kindNameFromID(id)
 		if err != nil {
-			return "", interrors.Capture(err)
+			return "", errors.Capture(err)
 		}
 		return fmt.Sprintf(`
 DELETE FROM annotation_%s
@@ -84,7 +84,7 @@ WHERE uuid = $annotationUUID.uuid`, kindName), nil
 func uuidQueryForID(id annotations.ID) (string, sqlair.M, error) {
 	kindName, err := kindNameFromID(id)
 	if err != nil {
-		return "", sqlair.M{}, interrors.Capture(err)
+		return "", sqlair.M{}, errors.Capture(err)
 	}
 
 	var selector string
@@ -125,7 +125,7 @@ func kindNameFromID(id annotations.ID) (string, error) {
 	case annotations.KindModel:
 		kindName = "model"
 	default:
-		return "", interrors.Errorf("%q %w", id.Kind, annotationerrors.UnknownKind)
+		return "", errors.Errorf("%q %w", id.Kind, annotationerrors.UnknownKind)
 	}
 	return kindName, nil
 }

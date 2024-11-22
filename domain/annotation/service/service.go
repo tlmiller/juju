@@ -7,7 +7,7 @@ import (
 	"context"
 
 	"github.com/juju/juju/core/annotations"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State describes retrieval and persistence methods for annotations.
@@ -39,7 +39,7 @@ func NewService(st State) *Service {
 // no annotations are found, an empty map is returned.
 func (s *Service) GetAnnotations(ctx context.Context, id annotations.ID) (map[string]string, error) {
 	annotations, err := s.st.GetAnnotations(ctx, id)
-	return annotations, interrors.Capture(err)
+	return annotations, errors.Capture(err)
 }
 
 // SetAnnotations associates key/value annotation pairs with a given ID. If
@@ -47,5 +47,5 @@ func (s *Service) GetAnnotations(ctx context.Context, id annotations.ID) (map[st
 // the given value.
 func (s *Service) SetAnnotations(ctx context.Context, id annotations.ID, annotations map[string]string) error {
 	err := s.st.SetAnnotations(ctx, id, annotations)
-	return interrors.Errorf("updating annotations for ID: %q %w", id.Name, err)
+	return errors.Errorf("updating annotations for ID: %q %w", id.Name, err)
 }

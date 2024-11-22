@@ -13,7 +13,7 @@ import (
 	corestorage "github.com/juju/juju/core/storage"
 	"github.com/juju/juju/domain/storage/service"
 	"github.com/juju/juju/domain/storage/state"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/storage"
 )
 
@@ -62,7 +62,7 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 	for _, pool := range model.StoragePools() {
 		err := i.service.CreateStoragePool(ctx, pool.Name(), storage.ProviderType(pool.Provider()), pool.Attributes())
 		if err != nil {
-			return interrors.Errorf("creating storage pool %q %w", pool.Name(), err)
+			return errors.Errorf("creating storage pool %q %w", pool.Name(), err)
 		}
 	}
 	return nil

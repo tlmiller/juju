@@ -14,7 +14,7 @@ import (
 	"github.com/juju/juju/core/modelmigration"
 	"github.com/juju/juju/domain/machine/service"
 	"github.com/juju/juju/domain/machine/state"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // Coordinator is the interface that is used to add operations to a migration.
@@ -62,7 +62,7 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 		// We need skeleton machines in dqlite.
 		machineUUID, err := i.service.CreateMachine(ctx, machine.Name(m.Id()))
 		if err != nil {
-			return interrors.Errorf("importing machine %q %w", m.Id(), err)
+			return errors.Errorf("importing machine %q %w", m.Id(), err)
 		}
 
 		// Import the machine's cloud instance.
@@ -88,7 +88,7 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 				cloudInstance.DisplayName(),
 				hardwareCharacteristics,
 			); err != nil {
-				return interrors.Errorf("importing machine cloud instance %q %w", m.Id(), err)
+				return errors.Errorf("importing machine cloud instance %q %w", m.Id(), err)
 			}
 		}
 	}

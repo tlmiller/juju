@@ -3,16 +3,16 @@
 
 package errors
 
-import interrors "github.com/juju/juju/internal/errors"
+import "github.com/juju/juju/internal/errors"
 
 const (
 	// AlreadyStarted states that the upgrade could not be started.
 	// This error occurs when the upgrade is already in progress.
-	AlreadyStarted = interrors.ConstError("upgrade already started")
+	AlreadyStarted = errors.ConstError("upgrade already started")
 	// AlreadyExists states that an upgrade operation has already been created.
 	// This error can occur when an upgrade is created.
-	AlreadyExists = interrors.ConstError("upgrade already exists")
+	AlreadyExists = errors.ConstError("upgrade already exists")
 	// NotFound states that an upgrade operation cannot be found where one is
 	// expected.
-	NotFound = interrors.ConstError("upgrade not found")
+	NotFound = errors.ConstError("upgrade not found")
 )

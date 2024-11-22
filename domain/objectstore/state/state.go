@@ -14,7 +14,7 @@ import (
 	"github.com/juju/juju/domain"
 	objectstoreerrors "github.com/juju/juju/domain/objectstore/errors"
 	"github.com/juju/juju/internal/database"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/uuid"
 )
 
@@ -34,7 +34,7 @@ func NewState(factory coredatabase.TxnRunnerFactory) *State {
 func (s *State) GetMetadata(ctx context.Context, path string) (coreobjectstore.Metadata, error) {
 	db, err := s.DB()
 	if err != nil {
-		return coreobjectstore.Metadata{}, interrors.Capture(err)
+		return coreobjectstore.Metadata{}, errors.Capture(err)
 	}
 
 	metadata := dbMetadata{Path: path}
@@ -45,21 +45,21 @@ FROM object_store_metadata_path p
 LEFT JOIN object_store_metadata m ON p.metadata_uuid = m.uuid
 WHERE path = $dbMetadata.path`, metadata)
 	if err != nil {
-		return coreobjectstore.Metadata{}, interrors.Errorf("preparing select metadata statement %w", err)
+		return coreobjectstore.Metadata{}, errors.Errorf("preparing select metadata statement %w", err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt, metadata).Get(&metadata)
 		if err != nil {
-			if interrors.Is(err, sqlair.ErrNoRows) {
+			if errors.Is(err, sqlair.ErrNoRows) {
 				return objectstoreerrors.ErrNotFound
 			}
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 		return nil
 	})
 	if err != nil {
-		return coreobjectstore.Metadata{}, interrors.Errorf("retrieving metadata %s %w", path, err)
+		return coreobjectstore.Metadata{}, errors.Errorf("retrieving metadata %s %w", path, err)
 	}
 	return metadata.ToCoreObjectStoreMetadata(), nil
 }
@@ -76,19 +76,19 @@ SELECT (p.path, m.uuid, m.size, m.hash) AS (&dbMetadata.*)
 FROM object_store_metadata_path p
 LEFT JOIN object_store_metadata m ON p.metadata_uuid = m.uuid`, dbMetadata{})
 	if err != nil {
-		return nil, interrors.Errorf("preparing select metadata statement %w", err)
+		return nil, errors.Errorf("preparing select metadata statement %w", err)
 	}
 
 	var metadata []dbMetadata
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt).GetAll(&metadata)
-		if err != nil && !interrors.Is(err, sqlair.ErrNoRows) {
-			return interrors.Errorf("retrieving metadata %w", err)
+		if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+			return errors.Errorf("retrieving metadata %w", err)
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 	return transform.Slice(metadata, (dbMetadata).ToCoreObjectStoreMetadata), nil
 }
@@ -97,7 +97,7 @@ LEFT JOIN object_store_metadata m ON p.metadata_uuid = m.uuid`, dbMetadata{})
 func (s *State) PutMetadata(ctx context.Context, metadata coreobjectstore.Metadata) error {
 	db, err := s.DB()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	uuid, err := uuid.NewUUID()
@@ -121,14 +121,14 @@ func (s *State) PutMetadata(ctx context.Context, metadata coreobjectstore.Metada
 INSERT INTO object_store_metadata (uuid, hash_type_id, hash, size)
 VALUES ($dbMetadata.*) ON CONFLICT (hash) DO NOTHING`, dbMetadata)
 	if err != nil {
-		return interrors.Errorf("preparing insert metadata statement %w", err)
+		return errors.Errorf("preparing insert metadata statement %w", err)
 	}
 
 	pathStmt, err := s.Prepare(`
 INSERT INTO object_store_metadata_path (path, metadata_uuid)
 VALUES ($dbMetadataPath.*)`, dbMetadataPath)
 	if err != nil {
-		return interrors.Errorf("preparing insert metadata path statement %w", err)
+		return errors.Errorf("preparing insert metadata path statement %w", err)
 	}
 
 	metadataLookupStmt, err := s.Prepare(`
@@ -137,38 +137,38 @@ FROM   object_store_metadata
 WHERE  hash = $dbMetadata.hash 
 AND    size = $dbMetadata.size`, dbMetadata, dbMetadataPath)
 	if err != nil {
-		return interrors.Errorf("preparing select metadata statement %w", err)
+		return errors.Errorf("preparing select metadata statement %w", err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		var outcome sqlair.Outcome
 		err := tx.Query(ctx, metadataStmt, dbMetadata).Get(&outcome)
 		if err != nil {
-			return interrors.Errorf("inserting metadata %w", err)
+			return errors.Errorf("inserting metadata %w", err)
 		}
 
 		if rows, err := outcome.Result().RowsAffected(); err != nil {
-			return interrors.Errorf("inserting metadata %w", err)
+			return errors.Errorf("inserting metadata %w", err)
 		} else if rows != 1 {
 			// If the rows affected is 0, then the metadata already exists.
 			// We need to get the uuid for the metadata, so that we can insert
 			// the path based on that uuid.
 			err := tx.Query(ctx, metadataLookupStmt, dbMetadata).Get(&dbMetadataPath)
-			if interrors.Is(err, sqlair.ErrNoRows) {
+			if errors.Is(err, sqlair.ErrNoRows) {
 				return objectstoreerrors.ErrHashAndSizeAlreadyExists
 			} else if err != nil {
-				return interrors.Errorf("inserting metadata %w", err)
+				return errors.Errorf("inserting metadata %w", err)
 			}
 		}
 
 		err = tx.Query(ctx, pathStmt, dbMetadataPath).Get(&outcome)
 		if err != nil {
-			return interrors.Errorf("inserting metadata path %w", err)
+			return errors.Errorf("inserting metadata path %w", err)
 		}
 		if rows, err := outcome.Result().RowsAffected(); err != nil {
-			return interrors.Errorf("inserting metadata path %w", err)
+			return errors.Errorf("inserting metadata path %w", err)
 		} else if rows != 1 {
-			return interrors.Errorf("metadata path not inserted")
+			return errors.Errorf("metadata path not inserted")
 		}
 		return nil
 	})
@@ -176,7 +176,7 @@ AND    size = $dbMetadata.size`, dbMetadata, dbMetadataPath)
 		if database.IsErrConstraintPrimaryKey(err) {
 			return objectstoreerrors.ErrHashAlreadyExists
 		}
-		return interrors.Errorf("adding path %s %w", metadata.Path, err)
+		return errors.Errorf("adding path %s %w", metadata.Path, err)
 	}
 	return nil
 }
@@ -185,7 +185,7 @@ AND    size = $dbMetadata.size`, dbMetadata, dbMetadataPath)
 func (s *State) RemoveMetadata(ctx context.Context, path string) error {
 	db, err := s.DB()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	dbMetadataPath := dbMetadataPath{
@@ -197,13 +197,13 @@ SELECT &dbMetadataPath.metadata_uuid
 FROM object_store_metadata_path 
 WHERE path = $dbMetadataPath.path`, dbMetadataPath)
 	if err != nil {
-		return interrors.Errorf("preparing select metadata statement %w", err)
+		return errors.Errorf("preparing select metadata statement %w", err)
 	}
 	pathStmt, err := s.Prepare(`
 DELETE FROM object_store_metadata_path 
 WHERE path = $dbMetadataPath.path`, dbMetadataPath)
 	if err != nil {
-		return interrors.Errorf("preparing delete metadata path statement %w", err)
+		return errors.Errorf("preparing delete metadata path statement %w", err)
 	}
 
 	metadataStmt, err := s.Prepare(`
@@ -215,31 +215,31 @@ AND NOT EXISTS (
   WHERE  metadata_uuid = object_store_metadata.uuid
 )`, dbMetadataPath)
 	if err != nil {
-		return interrors.Errorf("preparing delete metadata statement %w", err)
+		return errors.Errorf("preparing delete metadata statement %w", err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		// Get the metadata uuid, so we can delete the metadata if there
 		// are no more paths associated with it.
 		err := tx.Query(ctx, metadataUUIDStmt, dbMetadataPath).Get(&dbMetadataPath)
-		if interrors.Is(err, sqlair.ErrNoRows) {
+		if errors.Is(err, sqlair.ErrNoRows) {
 			return objectstoreerrors.ErrNotFound
 		} else if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		if err := tx.Query(ctx, pathStmt, dbMetadataPath).Run(); err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		if err := tx.Query(ctx, metadataStmt, dbMetadataPath).Run(); err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		return nil
 	})
 	if err != nil {
-		return interrors.Errorf("removing path %s %w", path, err)
+		return errors.Errorf("removing path %s %w", path, err)
 	}
 	return nil
 }

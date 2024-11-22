@@ -18,7 +18,7 @@ import (
 	applicationerrors "github.com/juju/juju/domain/application/errors"
 	machineerrors "github.com/juju/juju/domain/machine/errors"
 	modelerrors "github.com/juju/juju/domain/model/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type suite struct {
@@ -68,7 +68,7 @@ func (s *suite) TestGetModelAgentVersionModelNotFound(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	modelID := modeltesting.GenModelUUID(c)
-	modelNotFoundErr := interrors.Errorf("%w for id %q", modelerrors.NotFound, modelID)
+	modelNotFoundErr := errors.Errorf("%w for id %q", modelerrors.NotFound, modelID)
 	s.state.EXPECT().GetModelTargetAgentVersion(gomock.Any(), modelID).
 		Return(version.Zero, modelNotFoundErr)
 
@@ -192,7 +192,7 @@ func (s *suite) TestWatchModelTargetAgentVersionNotFound(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	modelID := modeltesting.GenModelUUID(c)
-	modelNotFoundErr := interrors.Errorf("%w for id %q", modelerrors.NotFound, modelID)
+	modelNotFoundErr := errors.Errorf("%w for id %q", modelerrors.NotFound, modelID)
 	s.modelState.EXPECT().GetModelUUID(context.Background()).Return(model.UUID(""), modelNotFoundErr)
 
 	_, err := NewModelService(s.modelState, s.state, nil).WatchModelTargetAgentVersion(

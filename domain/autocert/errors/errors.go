@@ -3,9 +3,9 @@
 
 package errors
 
-import interrors "github.com/juju/juju/internal/errors"
+import "github.com/juju/juju/internal/errors"
 
 const (
 	// NotFound describes an error that occurs when a cert cannot be found.
-	NotFound = interrors.ConstError("cert not found")
+	NotFound = errors.ConstError("cert not found")
 )

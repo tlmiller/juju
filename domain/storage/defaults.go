@@ -8,7 +8,7 @@ import (
 	coremodel "github.com/juju/juju/core/model"
 	storageerrors "github.com/juju/juju/domain/storage/errors"
 	"github.com/juju/juju/internal/charm"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/storage"
 	"github.com/juju/juju/internal/storage/provider"
 )
@@ -43,7 +43,7 @@ func StorageDirectivesWithDefaults(
 		if !ok {
 			if storage.Shared {
 				// TODO(axw) get the model's default shared storage pool, and create constraints here.
-				return interrors.Errorf(
+				return errors.Errorf(
 					"%w for shared charm storage %q",
 					storageerrors.MissingSharedStorageDirectiveError,
 					name)
@@ -52,7 +52,7 @@ func StorageDirectivesWithDefaults(
 		}
 		cons, err := storageDirectivesWithDefaults(storage, modelType, defaults, cons)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 		// Replace in case pool or size were updated.
 		allDirectives[name] = cons
@@ -73,7 +73,7 @@ func storageDirectivesWithDefaults(
 		kind := storageKind(charmStorage.Type)
 		poolName, err := defaultStoragePool(defaults, modelType, kind, directive)
 		if err != nil {
-			return withDefaults, interrors.Errorf("finding default pool for %q storage %w", charmStorage.Name, err)
+			return withDefaults, errors.Errorf("finding default pool for %q storage %w", charmStorage.Name, err)
 		}
 		withDefaults.Pool = poolName
 	}

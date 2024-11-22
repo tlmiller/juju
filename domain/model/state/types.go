@@ -14,7 +14,7 @@ import (
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/core/permission"
 	"github.com/juju/juju/core/user"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // dbModel represents the state of a model.
@@ -65,17 +65,17 @@ type dbModel struct {
 func (m *dbModel) toCoreModel() (coremodel.Model, error) {
 	agentVersion, err := version.Parse(m.AgentVersion)
 	if err != nil {
-		return coremodel.Model{}, interrors.Errorf("parsing model %q agent version %q: %w", m.UUID, agentVersion, err)
+		return coremodel.Model{}, errors.Errorf("parsing model %q agent version %q: %w", m.UUID, agentVersion, err)
 	}
 	ownerName, err := user.NewName(m.OwnerName)
 	if err != nil {
-		return coremodel.Model{}, interrors.Capture(err)
+		return coremodel.Model{}, errors.Capture(err)
 	}
 	var credOwnerName user.Name
 	if m.CredentialOwnerName != "" {
 		credOwnerName, err = user.NewName(m.CredentialOwnerName)
 		if err != nil {
-			return coremodel.Model{}, interrors.Capture(err)
+			return coremodel.Model{}, errors.Capture(err)
 		}
 	}
 
@@ -203,7 +203,7 @@ type dbModelSummary struct {
 func (m dbModelSummary) decodeUserModelSummary(controllerInfo dbController) (coremodel.UserModelSummary, error) {
 	ms, err := m.decodeModelSummary(controllerInfo)
 	if err != nil {
-		return coremodel.UserModelSummary{}, interrors.Capture(err)
+		return coremodel.UserModelSummary{}, errors.Capture(err)
 	}
 	return coremodel.UserModelSummary{
 		ModelSummary:       ms,
@@ -219,20 +219,20 @@ func (m dbModelSummary) decodeModelSummary(controllerInfo dbController) (coremod
 		var err error
 		agentVersion, err = version.Parse(m.AgentVersion)
 		if err != nil {
-			return coremodel.ModelSummary{}, interrors.Errorf("parsing model %q agent version %q %w", m.Name, agentVersion,
+			return coremodel.ModelSummary{}, errors.Errorf("parsing model %q agent version %q %w", m.Name, agentVersion,
 				err)
 
 		}
 	}
 	ownerName, err := user.NewName(m.OwnerName)
 	if err != nil {
-		return coremodel.ModelSummary{}, interrors.Capture(err)
+		return coremodel.ModelSummary{}, errors.Capture(err)
 	}
 	var credOwnerName user.Name
 	if m.CloudCredentialOwnerName != "" {
 		credOwnerName, err = user.NewName(m.CloudCredentialOwnerName)
 		if err != nil {
-			return coremodel.ModelSummary{}, interrors.Capture(err)
+			return coremodel.ModelSummary{}, errors.Capture(err)
 		}
 	}
 	return coremodel.ModelSummary{
@@ -291,7 +291,7 @@ type dbModelUserInfo struct {
 func (info *dbModelUserInfo) toModelUserInfo() (coremodel.ModelUserInfo, error) {
 	name, err := user.NewName(info.Name)
 	if err != nil {
-		return coremodel.ModelUserInfo{}, interrors.Capture(err)
+		return coremodel.ModelUserInfo{}, errors.Capture(err)
 	}
 
 	return coremodel.ModelUserInfo{

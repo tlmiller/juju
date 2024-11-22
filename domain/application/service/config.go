@@ -6,7 +6,7 @@ package service
 import (
 	"github.com/juju/juju/domain/application/charm"
 	internalcharm "github.com/juju/juju/internal/charm"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 func decodeConfig(options charm.Config) (internalcharm.Config, error) {
@@ -18,7 +18,7 @@ func decodeConfig(options charm.Config) (internalcharm.Config, error) {
 	for name, option := range options.Options {
 		opt, err := decodeConfigOption(option)
 		if err != nil {
-			return internalcharm.Config{}, interrors.Errorf("decode config option: %w", err)
+			return internalcharm.Config{}, errors.Errorf("decode config option: %w", err)
 		}
 
 		result[name] = opt
@@ -31,7 +31,7 @@ func decodeConfig(options charm.Config) (internalcharm.Config, error) {
 func decodeConfigOption(option charm.Option) (internalcharm.Option, error) {
 	t, err := decodeOptionType(option.Type)
 	if err != nil {
-		return internalcharm.Option{}, interrors.Errorf("decode option type: %w", err)
+		return internalcharm.Option{}, errors.Errorf("decode option type: %w", err)
 	}
 
 	return internalcharm.Option{
@@ -54,7 +54,7 @@ func decodeOptionType(t charm.OptionType) (string, error) {
 	case charm.OptionSecret:
 		return "secret", nil
 	default:
-		return "", interrors.Errorf("unknown option type %q", t)
+		return "", errors.Errorf("unknown option type %q", t)
 	}
 }
 
@@ -67,7 +67,7 @@ func encodeConfig(config *internalcharm.Config) (charm.Config, error) {
 	for name, option := range config.Options {
 		opt, err := encodeConfigOption(option)
 		if err != nil {
-			return charm.Config{}, interrors.Errorf("encode config option: %w", err)
+			return charm.Config{}, errors.Errorf("encode config option: %w", err)
 		}
 
 		result[name] = opt
@@ -80,7 +80,7 @@ func encodeConfig(config *internalcharm.Config) (charm.Config, error) {
 func encodeConfigOption(option internalcharm.Option) (charm.Option, error) {
 	t, err := encodeOptionType(option.Type)
 	if err != nil {
-		return charm.Option{}, interrors.Errorf("encode option type: %w", err)
+		return charm.Option{}, errors.Errorf("encode option type: %w", err)
 	}
 
 	return charm.Option{
@@ -103,6 +103,6 @@ func encodeOptionType(t string) (charm.OptionType, error) {
 	case "secret":
 		return charm.OptionSecret, nil
 	default:
-		return "", interrors.Errorf("unknown option type %q", t)
+		return "", errors.Errorf("unknown option type %q", t)
 	}
 }

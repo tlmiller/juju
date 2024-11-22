@@ -32,7 +32,7 @@ import (
 	"github.com/juju/juju/domain/credential"
 	credentialerrors "github.com/juju/juju/domain/credential/errors"
 	changestreamtesting "github.com/juju/juju/internal/changestream/testing"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 	"github.com/juju/juju/internal/uuid"
 )
@@ -161,7 +161,7 @@ func (s *credentialSuite) TestUpdateCloudCredentialMissingName(c *gc.C) {
 	}
 	ctx := context.Background()
 	_, err := st.UpsertCloudCredential(ctx, corecredential.Key{Cloud: "stratus", Owner: s.userName}, credInfo)
-	c.Assert(interrors.Is(err, coreerrors.NotValid), jc.IsTrue)
+	c.Assert(errors.Is(err, coreerrors.NotValid), jc.IsTrue)
 }
 
 func (s *credentialSuite) TestCreateInvalidCredential(c *gc.C) {

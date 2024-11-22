@@ -10,7 +10,7 @@ import (
 
 	coreerrors "github.com/juju/juju/core/errors"
 	"github.com/juju/juju/core/logger"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State describes retrieval and persistence methods for storage.
@@ -50,7 +50,7 @@ func (s *Service) Put(ctx context.Context, name string, data []byte) error {
 func (s *Service) Get(ctx context.Context, name string) ([]byte, error) {
 	s.logger.Tracef("retrieving autocert %s from the autocert cache", name)
 	cert, err := s.st.Get(ctx, name)
-	if interrors.Is(err, coreerrors.NotFound) {
+	if errors.Is(err, coreerrors.NotFound) {
 		return nil, autocert.ErrCacheMiss
 	}
 	return cert, err

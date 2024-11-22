@@ -40,7 +40,7 @@ import (
 	domainservicefactory "github.com/juju/juju/domain/services"
 	"github.com/juju/juju/internal/auth"
 	databasetesting "github.com/juju/juju/internal/database/testing"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 	_ "github.com/juju/juju/internal/provider/dummy"
 	"github.com/juju/juju/internal/services"
@@ -357,7 +357,7 @@ type TestingObjectStore struct{}
 // Get returns an io.ReadCloser for data at path, namespaced to the
 // model.
 func (TestingObjectStore) Get(ctx context.Context, name string) (io.ReadCloser, int64, error) {
-	return nil, 0, interrors.Errorf(name+" %w", coreerrors.NotFound)
+	return nil, 0, errors.Errorf(name+" %w", coreerrors.NotFound)
 }
 
 // Put stores data from reader at path, namespaced to the model.

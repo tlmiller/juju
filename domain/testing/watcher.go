@@ -10,7 +10,7 @@ import (
 	"github.com/juju/juju/core/watcher"
 	"github.com/juju/juju/core/watcher/eventsource"
 	"github.com/juju/juju/core/watcher/watchertest"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // NamespaceWatcherFactory implements a simple NamespaceWatcher creation process
@@ -48,7 +48,7 @@ func (f *NamespaceWatcherFactory) FeedChange(
 
 	select {
 	case <-ctx.Done():
-		return interrors.Errorf("unable to feed watcher change for namespace %q: %w", namespace, ctx.Err())
+		return errors.Errorf("unable to feed watcher change for namespace %q: %w", namespace, ctx.Err())
 	case ch <- change:
 	}
 	return nil
@@ -68,7 +68,7 @@ func (f *NamespaceWatcherFactory) NewNamespaceWatcher(
 	if f.InitialStateFunc != nil {
 		state, err := f.InitialStateFunc()
 		if err != nil {
-			return nil, interrors.Errorf("fetching initial state for watcher: %w", err)
+			return nil, errors.Errorf("fetching initial state for watcher: %w", err)
 		}
 		ch <- state
 	}

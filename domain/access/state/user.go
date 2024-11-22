@@ -20,7 +20,7 @@ import (
 	modelerrors "github.com/juju/juju/domain/model/errors"
 	"github.com/juju/juju/internal/auth"
 	internaldatabase "github.com/juju/juju/internal/database"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	internaluuid "github.com/juju/juju/internal/uuid"
 )
 
@@ -51,10 +51,10 @@ func (st *UserState) AddUser(
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		return interrors.Capture(AddUser(ctx, tx, uuid, name, displayName, external, creatorUUID))
+		return errors.Capture(AddUser(ctx, tx, uuid, name, displayName, external, creatorUUID))
 	})
 }
 
@@ -74,11 +74,11 @@ func (st *UserState) AddUserWithPermission(
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		return interrors.Capture(AddUserWithPermission(ctx, tx, uuid, name, displayName, external, creatorUUID, permission))
+		return errors.Capture(AddUserWithPermission(ctx, tx, uuid, name, displayName, external, creatorUUID, permission))
 	})
 }
 
@@ -98,11 +98,11 @@ func (st *UserState) AddUserWithPasswordHash(
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		return interrors.Capture(AddUserWithPassword(ctx, tx, uuid, name, displayName, creatorUUID, permission, passwordHash, salt))
+		return errors.Capture(AddUserWithPassword(ctx, tx, uuid, name, displayName, creatorUUID, permission, passwordHash, salt))
 	})
 }
 
@@ -122,15 +122,15 @@ func (st *UserState) AddUserWithActivationKey(
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err = AddUserWithPermission(ctx, tx, uuid, name, displayName, false, creatorUUID, permission)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
-		return interrors.Capture(setActivationKey(ctx, tx, name, activationKey))
+		return errors.Capture(setActivationKey(ctx, tx, name, activationKey))
 	})
 }
 
@@ -140,7 +140,7 @@ func (st *UserState) AddUserWithActivationKey(
 func (st *UserState) GetAllUsers(ctx context.Context, includeDisabled bool) ([]user.User, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, interrors.Errorf("getting DB access %w", err)
+		return nil, errors.Errorf("getting DB access %w", err)
 	}
 
 	selectGetAllUsersStmt, err := st.Prepare(`
@@ -154,19 +154,19 @@ FROM   v_user_auth u
 WHERE  u.removed = false 
 `, dbUser{})
 	if err != nil {
-		return nil, interrors.Errorf("preparing select getAllUsers query %w", err)
+		return nil, errors.Errorf("preparing select getAllUsers query %w", err)
 	}
 
 	var results []dbUser
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err = tx.Query(ctx, selectGetAllUsersStmt).GetAll(&results)
-		if err != nil && !interrors.Is(err, sqlair.ErrNoRows) {
-			return interrors.Errorf("getting query results %w", err)
+		if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+			return errors.Errorf("getting query results %w", err)
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, interrors.Errorf("getting all users %w", err)
+		return nil, errors.Errorf("getting all users %w", err)
 	}
 
 	var usrs []user.User
@@ -174,7 +174,7 @@ WHERE  u.removed = false
 		if !result.Disabled || includeDisabled {
 			coreUser, err := result.toCoreUser()
 			if err != nil {
-				return nil, interrors.Capture(err)
+				return nil, errors.Capture(err)
 			}
 			usrs = append(usrs, coreUser)
 		}
@@ -189,7 +189,7 @@ WHERE  u.removed = false
 func (st *UserState) GetUser(ctx context.Context, uuid user.UUID) (user.User, error) {
 	db, err := st.DB()
 	if err != nil {
-		return user.User{}, interrors.Errorf("getting DB access %w", err)
+		return user.User{}, errors.Errorf("getting DB access %w", err)
 	}
 
 	var usr user.User
@@ -210,22 +210,22 @@ WHERE  u.uuid = $M.uuid`
 
 		selectGetUserStmt, err := st.Prepare(getUserQuery, dbUser{}, sqlair.M{})
 		if err != nil {
-			return interrors.Errorf("preparing select getUser query %w", err)
+			return errors.Errorf("preparing select getUser query %w", err)
 		}
 
 		var result dbUser
 		err = tx.Query(ctx, selectGetUserStmt, sqlair.M{"uuid": uuid.String()}).Get(&result)
-		if interrors.Is(err, sql.ErrNoRows) {
-			return interrors.Errorf("%q %w", uuid, accesserrors.UserNotFound)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.Errorf("%q %w", uuid, accesserrors.UserNotFound)
 		} else if err != nil {
-			return interrors.Errorf("getting user with uuid %q %w", uuid, err)
+			return errors.Errorf("getting user with uuid %q %w", uuid, err)
 		}
 
 		usr, err = result.toCoreUser()
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	})
 	if err != nil {
-		return user.User{}, interrors.Errorf("getting user with uuid %q %w", uuid, err)
+		return user.User{}, errors.Errorf("getting user with uuid %q %w", uuid, err)
 	}
 
 	return usr, nil
@@ -246,19 +246,19 @@ AND user.removed = false`
 
 	selectUserUUIDStmt, err := sqlair.Prepare(stmt, sqlair.M{}, uName)
 	if err != nil {
-		return "", interrors.Capture(err)
+		return "", errors.Capture(err)
 	}
 
 	result := sqlair.M{}
 	err = tx.Query(ctx, selectUserUUIDStmt, uName).Get(&result)
-	if interrors.Is(err, sql.ErrNoRows) {
-		return "", interrors.Errorf("%w when finding user uuid for name %q", accesserrors.UserNotFound, name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", errors.Errorf("%w when finding user uuid for name %q", accesserrors.UserNotFound, name)
 	} else if err != nil {
-		return "", interrors.Errorf("looking up user uuid for name %q: %w", name, err)
+		return "", errors.Errorf("looking up user uuid for name %q: %w", name, err)
 	}
 
 	if result["userUUID"] == nil {
-		return "", interrors.Errorf("retrieving user uuid for user name %q, no result provided", name)
+		return "", errors.Errorf("retrieving user uuid for user name %q, no result provided", name)
 	}
 
 	return user.UUID(result["userUUID"].(string)), nil
@@ -270,7 +270,7 @@ AND user.removed = false`
 func (st *UserState) GetUserByName(ctx context.Context, name user.Name) (user.User, error) {
 	db, err := st.DB()
 	if err != nil {
-		return user.User{}, interrors.Errorf("getting DB access %w", err)
+		return user.User{}, errors.Errorf("getting DB access %w", err)
 	}
 
 	uName := userName{Name: name.Name()}
@@ -294,22 +294,22 @@ AND    u.removed = false`
 
 		selectGetUserByNameStmt, err := st.Prepare(getUserByNameQuery, dbUser{}, uName)
 		if err != nil {
-			return interrors.Errorf("preparing select getUserByName query %w", err)
+			return errors.Errorf("preparing select getUserByName query %w", err)
 		}
 
 		var result dbUser
 		err = tx.Query(ctx, selectGetUserByNameStmt, uName).Get(&result)
-		if interrors.Is(err, sql.ErrNoRows) {
-			return interrors.Errorf("%q %w", name, accesserrors.UserNotFound)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.Errorf("%q %w", name, accesserrors.UserNotFound)
 		} else if err != nil {
-			return interrors.Errorf("getting user with name %q %w", name, err)
+			return errors.Errorf("getting user with name %q %w", name, err)
 		}
 
 		usr, err = result.toCoreUser()
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	})
 	if err != nil {
-		return user.User{}, interrors.Errorf("getting user with name %q %w", name, err)
+		return user.User{}, errors.Errorf("getting user with name %q %w", name, err)
 	}
 
 	return usr, nil
@@ -322,7 +322,7 @@ AND    u.removed = false`
 func (st *UserState) GetUserByAuth(ctx context.Context, name user.Name, password auth.Password) (user.User, error) {
 	db, err := st.DB()
 	if err != nil {
-		return user.User{}, interrors.Errorf("getting DB access %w", err)
+		return user.User{}, errors.Errorf("getting DB access %w", err)
 	}
 
 	uName := userName{Name: name.Name()}
@@ -343,37 +343,37 @@ AND    user.removed = false
 
 	selectGetUserByAuthStmt, err := st.Prepare(getUserWithAuthQuery, dbUser{}, uName)
 	if err != nil {
-		return user.User{}, interrors.Errorf("preparing select getUserWithAuth query %w", err)
+		return user.User{}, errors.Errorf("preparing select getUserWithAuth query %w", err)
 	}
 
 	var result dbUser
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err = tx.Query(ctx, selectGetUserByAuthStmt, uName).Get(&result)
-		if interrors.Is(err, sql.ErrNoRows) {
-			return interrors.Errorf("%q %w", name, accesserrors.UserNotFound)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.Errorf("%q %w", name, accesserrors.UserNotFound)
 		} else if err != nil {
-			return interrors.Errorf("getting user with name %q %w", name, err)
+			return errors.Errorf("getting user with name %q %w", name, err)
 		}
 
 		return nil
 	})
 	if err != nil {
-		return user.User{}, interrors.Errorf("getting user with name %q %w", name, err)
+		return user.User{}, errors.Errorf("getting user with name %q %w", name, err)
 	}
 
 	passwordHash, err := auth.HashPassword(password, result.PasswordSalt)
-	if interrors.Is(err, coreerrors.NotValid) {
+	if errors.Is(err, coreerrors.NotValid) {
 		// If the user has no salt, then they don't have a password correctly
 		// set. In this case, we should return an unauthorized error.
-		return user.User{}, interrors.Errorf("%q %w", name, accesserrors.UserUnauthorized)
+		return user.User{}, errors.Errorf("%q %w", name, accesserrors.UserUnauthorized)
 	} else if err != nil {
-		return user.User{}, interrors.Errorf("hashing password for user with name %q %w", name, err)
+		return user.User{}, errors.Errorf("hashing password for user with name %q %w", name, err)
 	} else if passwordHash != result.PasswordHash {
-		return user.User{}, interrors.Errorf("%q %w", name, accesserrors.UserUnauthorized)
+		return user.User{}, errors.Errorf("%q %w", name, accesserrors.UserUnauthorized)
 	}
 
 	coreUser, err := result.toCoreUser()
-	return coreUser, interrors.Capture(err)
+	return coreUser, errors.Capture(err)
 }
 
 // RemoveUser marks the user as removed. This obviates the ability of a user
@@ -384,12 +384,12 @@ AND    user.removed = false
 func (st *UserState) RemoveUser(ctx context.Context, name user.Name) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 
 	uuidStmt, err := st.getActiveUUIDStmt()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	m := make(sqlair.M, 1)
@@ -401,62 +401,62 @@ WHERE user_public_ssh_key_id IN (SELECT id
 								 WHERE upsk.user_uuid = $M.uuid)
 	`, m)
 	if err != nil {
-		return interrors.Errorf("preparing delete model authorized keys query for user %w", err)
+		return errors.Errorf("preparing delete model authorized keys query for user %w", err)
 	}
 
 	deleteUserPublicSSHKeysStmt, err := st.Prepare(
 		"DELETE FROM user_public_ssh_key WHERE user_uuid = $M.uuid", m,
 	)
 	if err != nil {
-		return interrors.Errorf("preparing delete user public ssh keys %w", err)
+		return errors.Errorf("preparing delete user public ssh keys %w", err)
 	}
 
 	deletePassStmt, err := st.Prepare("DELETE FROM user_password WHERE user_uuid = $M.uuid", m)
 	if err != nil {
-		return interrors.Errorf("preparing password deletion query %w", err)
+		return errors.Errorf("preparing password deletion query %w", err)
 	}
 
 	deleteKeyStmt, err := st.Prepare("DELETE FROM user_activation_key WHERE user_uuid = $M.uuid", m)
 	if err != nil {
-		return interrors.Errorf("preparing activation key deletion query %w", err)
+		return errors.Errorf("preparing activation key deletion query %w", err)
 	}
 
 	setRemovedStmt, err := st.Prepare("UPDATE user SET removed = true WHERE uuid = $M.uuid", m)
 	if err != nil {
-		return interrors.Errorf("preparing password deletion query %w", err)
+		return errors.Errorf("preparing password deletion query %w", err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		uuid, err := st.uuidForName(ctx, tx, uuidStmt, name)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 		m["uuid"] = uuid
 
 		if err := tx.Query(ctx, deleteModelAuthorizedKeysStmt, m).Run(); err != nil {
-			return interrors.Errorf("deleting model authorized keys for %q %w", name, err)
+			return errors.Errorf("deleting model authorized keys for %q %w", name, err)
 		}
 
 		if err := tx.Query(ctx, deleteUserPublicSSHKeysStmt, m).Run(); err != nil {
-			return interrors.Errorf("deleting user publish ssh keys for %q %w", name, err)
+			return errors.Errorf("deleting user publish ssh keys for %q %w", name, err)
 		}
 
 		if err := tx.Query(ctx, deletePassStmt, m).Run(); err != nil {
-			return interrors.Errorf("deleting password for %q %w", name, err)
+			return errors.Errorf("deleting password for %q %w", name, err)
 		}
 
 		if err := tx.Query(ctx, deleteKeyStmt, m).Run(); err != nil {
-			return interrors.Errorf("deleting key for %q %w", name, err)
+			return errors.Errorf("deleting key for %q %w", name, err)
 		}
 
 		if err := tx.Query(ctx, setRemovedStmt, m).Run(); err != nil {
-			return interrors.Errorf("marking %q removed %w", name, err)
+			return errors.Errorf("marking %q removed %w", name, err)
 		}
 
 		return nil
 	})
 
-	return interrors.Errorf("removing user %q %w", name, err)
+	return errors.Errorf("removing user %q %w", name, err)
 }
 
 // SetActivationKey removes any active passwords for the user and sets the
@@ -465,32 +465,32 @@ WHERE user_public_ssh_key_id IN (SELECT id
 func (st *UserState) SetActivationKey(ctx context.Context, name user.Name, activationKey []byte) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 
 	uuidStmt, err := st.getActiveUUIDStmt()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	m := make(sqlair.M, 1)
 
 	deletePassStmt, err := st.Prepare("DELETE FROM user_password WHERE user_uuid = $M.uuid", m)
 	if err != nil {
-		return interrors.Errorf("preparing password deletion query %w", err)
+		return errors.Errorf("preparing password deletion query %w", err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		uuid, err := st.uuidForName(ctx, tx, uuidStmt, name)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		if err := tx.Query(ctx, deletePassStmt, sqlair.M{"uuid": uuid}).Run(); err != nil {
-			return interrors.Errorf("deleting password for %q %w", name, err)
+			return errors.Errorf("deleting password for %q %w", name, err)
 		}
 
-		return interrors.Capture(setActivationKey(ctx, tx, name, activationKey))
+		return errors.Capture(setActivationKey(ctx, tx, name, activationKey))
 	})
 }
 
@@ -500,12 +500,12 @@ func (st *UserState) SetActivationKey(ctx context.Context, name user.Name, activ
 func (st *UserState) GetActivationKey(ctx context.Context, name user.Name) ([]byte, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, interrors.Errorf("getting DB access %w", err)
+		return nil, errors.Errorf("getting DB access %w", err)
 	}
 
 	uuidStmt, err := st.getActiveUUIDStmt()
 	if err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 
 	m := make(sqlair.M, 1)
@@ -514,29 +514,29 @@ func (st *UserState) GetActivationKey(ctx context.Context, name user.Name) ([]by
 SELECT (*) AS (&dbActivationKey.*) FROM user_activation_key WHERE user_uuid = $M.uuid
 `, m, dbActivationKey{})
 	if err != nil {
-		return nil, interrors.Errorf("preparing activation get query %w", err)
+		return nil, errors.Errorf("preparing activation get query %w", err)
 	}
 
 	var key dbActivationKey
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		uuid, err := st.uuidForName(ctx, tx, uuidStmt, name)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		if err := tx.Query(ctx, selectKeyStmt, sqlair.M{"uuid": uuid}).Get(&key); err != nil {
-			if interrors.Is(err, sql.ErrNoRows) {
-				return interrors.Errorf("activation key for %q %w", name, accesserrors.ActivationKeyNotFound)
+			if errors.Is(err, sql.ErrNoRows) {
+				return errors.Errorf("activation key for %q %w", name, accesserrors.ActivationKeyNotFound)
 			}
-			return interrors.Errorf("selecting activation key for %q %w", name, err)
+			return errors.Errorf("selecting activation key for %q %w", name, err)
 		}
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	})
 	if err != nil {
-		return nil, interrors.Errorf("getting activation key for %q %w", name, err)
+		return nil, errors.Errorf("getting activation key for %q %w", name, err)
 	}
 	if len(key.ActivationKey) == 0 {
-		return nil, interrors.Errorf("activation key for %q %w", name, accesserrors.ActivationKeyNotValid)
+		return nil, errors.Errorf("activation key for %q %w", name, accesserrors.ActivationKeyNotValid)
 	}
 	return []byte(key.ActivationKey), nil
 }
@@ -547,33 +547,33 @@ SELECT (*) AS (&dbActivationKey.*) FROM user_activation_key WHERE user_uuid = $M
 func (st *UserState) SetPasswordHash(ctx context.Context, name user.Name, passwordHash string, salt []byte) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 
 	uuidStmt, err := st.getActiveUUIDStmt()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	m := make(sqlair.M, 1)
 
 	deleteKeyStmt, err := st.Prepare("DELETE FROM user_activation_key WHERE user_uuid = $M.uuid", m)
 	if err != nil {
-		return interrors.Errorf("preparing password deletion query %w", err)
+		return errors.Errorf("preparing password deletion query %w", err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		uuid, err := st.uuidForName(ctx, tx, uuidStmt, name)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 		m["uuid"] = uuid
 
 		if err := tx.Query(ctx, deleteKeyStmt, m).Run(); err != nil {
-			return interrors.Errorf("deleting key for %q %w", name, err)
+			return errors.Errorf("deleting key for %q %w", name, err)
 		}
 
-		return interrors.Capture(setPasswordHash(ctx, tx, name, passwordHash, salt))
+		return errors.Capture(setPasswordHash(ctx, tx, name, passwordHash, salt))
 	})
 }
 
@@ -583,12 +583,12 @@ func (st *UserState) SetPasswordHash(ctx context.Context, name user.Name, passwo
 func (st *UserState) EnableUserAuthentication(ctx context.Context, name user.Name) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 
 	uuidStmt, err := st.getActiveUUIDStmt()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	m := make(sqlair.M, 1)
@@ -601,18 +601,18 @@ UPDATE SET disabled = false`
 
 	enableUserStmt, err := st.Prepare(q, m)
 	if err != nil {
-		return interrors.Errorf("preparing enable user query %w", err)
+		return errors.Errorf("preparing enable user query %w", err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		uuid, err := st.uuidForName(ctx, tx, uuidStmt, name)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 		m["uuid"] = uuid
 
 		if err := tx.Query(ctx, enableUserStmt, m).Run(); err != nil {
-			return interrors.Errorf("enabling user %q %w", name, err)
+			return errors.Errorf("enabling user %q %w", name, err)
 		}
 
 		return nil
@@ -624,12 +624,12 @@ UPDATE SET disabled = false`
 func (st *UserState) DisableUserAuthentication(ctx context.Context, name user.Name) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 
 	uuidStmt, err := st.getActiveUUIDStmt()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	m := make(sqlair.M, 1)
@@ -642,18 +642,18 @@ UPDATE SET disabled = true`
 
 	disableUserStmt, err := st.Prepare(q, m)
 	if err != nil {
-		return interrors.Errorf("preparing disable user query %w", err)
+		return errors.Errorf("preparing disable user query %w", err)
 	}
 
-	return interrors.Capture(db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+	return errors.Capture(db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		uuid, err := st.uuidForName(ctx, tx, uuidStmt, name)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 		m["uuid"] = uuid
 
 		if err := tx.Query(ctx, disableUserStmt, m).Run(); err != nil {
-			return interrors.Errorf("disabling user %q %w", name, err)
+			return errors.Errorf("disabling user %q %w", name, err)
 		}
 
 		return nil
@@ -679,10 +679,10 @@ func AddUserWithPassword(
 ) error {
 	err := AddUserWithPermission(ctx, tx, uuid, name, displayName, false, creatorUUID, permission)
 	if err != nil {
-		return interrors.Errorf("adding user with uuid %q %w", uuid, err)
+		return errors.Errorf("adding user with uuid %q %w", uuid, err)
 	}
 
-	return interrors.Capture(setPasswordHash(ctx, tx, name, passwordHash, salt))
+	return errors.Capture(setPasswordHash(ctx, tx, name, passwordHash, salt))
 }
 
 // AddUser adds a new user to the database and enables the user.
@@ -714,16 +714,16 @@ VALUES           ($dbUser.*)`
 
 	insertAddUserStmt, err := sqlair.Prepare(addUserQuery, user)
 	if err != nil {
-		return interrors.Errorf("preparing add user query %w", err)
+		return errors.Errorf("preparing add user query %w", err)
 	}
 
 	err = tx.Query(ctx, insertAddUserStmt, user).Run()
 	if internaldatabase.IsErrConstraintUnique(err) {
-		return interrors.Errorf("adding user %q %w", name, accesserrors.UserAlreadyExists)
+		return errors.Errorf("adding user %q %w", name, accesserrors.UserAlreadyExists)
 	} else if internaldatabase.IsErrConstraintForeignKey(err) {
-		return interrors.Errorf("adding user %q %w", name, accesserrors.UserCreatorUUIDNotFound)
+		return errors.Errorf("adding user %q %w", name, accesserrors.UserCreatorUUIDNotFound)
 	} else if err != nil {
-		return interrors.Errorf("adding user %q %w", name, err)
+		return errors.Errorf("adding user %q %w", name, err)
 	}
 
 	enableUserQuery := `
@@ -733,11 +733,11 @@ VALUES ($dbUser.uuid, false)
 
 	enableUserStmt, err := sqlair.Prepare(enableUserQuery, user)
 	if err != nil {
-		return interrors.Errorf("preparing enable user query %w", err)
+		return errors.Errorf("preparing enable user query %w", err)
 	}
 
 	if err := tx.Query(ctx, enableUserStmt, user).Run(); err != nil {
-		return interrors.Errorf("enabling user %q %w", name, err)
+		return errors.Errorf("enabling user %q %w", name, err)
 	}
 
 	return nil
@@ -761,12 +761,12 @@ func AddUserWithPermission(
 ) error {
 	err := AddUser(ctx, tx, uuid, name, displayName, external, creatorUuid)
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	permissionUUID, err := internaluuid.NewUUID()
 	if err != nil {
-		return interrors.Errorf("generating permission UUID %w", err)
+		return errors.Errorf("generating permission UUID %w", err)
 	}
 	err = AddUserPermission(ctx, tx, AddUserPermissionArgs{
 		PermissionUUID: permissionUUID.String(),
@@ -775,7 +775,7 @@ func AddUserWithPermission(
 		Target:         access.Target,
 	})
 	if err != nil {
-		return interrors.Errorf("adding permission for user %q %w", name, err)
+		return errors.Errorf("adding permission for user %q %w", name, err)
 	}
 
 	return nil
@@ -790,12 +790,12 @@ func AddUserWithPermission(
 func (st *UserState) UpdateLastModelLogin(ctx context.Context, name user.Name, modelUUID coremodel.UUID, lastLogin time.Time) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Errorf("getting DB access %w", err)
+		return errors.Errorf("getting DB access %w", err)
 	}
 
 	uuidStmt, err := st.getActiveUUIDStmt()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	insertModelLoginStmt, err := st.Prepare(`
@@ -804,13 +804,13 @@ VALUES ($dbModelLastLogin.*)
 ON CONFLICT(model_uuid, user_uuid) DO UPDATE SET 
 	time = excluded.time`, dbModelLastLogin{})
 	if err != nil {
-		return interrors.Errorf("preparing insert model login query %w", err)
+		return errors.Errorf("preparing insert model login query %w", err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		userUUID, err := st.uuidForName(ctx, tx, uuidStmt, name)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		mll := dbModelLastLogin{
@@ -826,12 +826,12 @@ ON CONFLICT(model_uuid, user_uuid) DO UPDATE SET
 				// uuidForName query would have failed, so it must be the model.
 				return modelerrors.NotFound
 			}
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 		return nil
 	})
 	if err != nil {
-		return interrors.Errorf("inserting last login for user %q for model %q %w", name, modelUUID, err)
+		return errors.Errorf("inserting last login for user %q for model %q %w", name, modelUUID, err)
 	}
 	return nil
 }
@@ -846,12 +846,12 @@ ON CONFLICT(model_uuid, user_uuid) DO UPDATE SET
 func (st *UserState) LastModelLogin(ctx context.Context, name user.Name, modelUUID coremodel.UUID) (time.Time, error) {
 	db, err := st.DB()
 	if err != nil {
-		return time.Time{}, interrors.Errorf("getting DB access %w", err)
+		return time.Time{}, errors.Errorf("getting DB access %w", err)
 	}
 
 	uuidStmt, err := st.getActiveUUIDStmt()
 	if err != nil {
-		return time.Time{}, interrors.Capture(err)
+		return time.Time{}, errors.Capture(err)
 	}
 
 	getLastModelLoginTime := `
@@ -863,14 +863,14 @@ ORDER BY time DESC LIMIT 1;
 	`
 	getLastModelLoginTimeStmt, err := st.Prepare(getLastModelLoginTime, dbModelLastLogin{})
 	if err != nil {
-		return time.Time{}, interrors.Errorf("preparing select getLastModelLoginTime query %w", err)
+		return time.Time{}, errors.Errorf("preparing select getLastModelLoginTime query %w", err)
 	}
 
 	var lastConnection time.Time
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		userUUID, err := st.uuidForName(ctx, tx, uuidStmt, name)
 		if err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		mll := dbModelLastLogin{
@@ -878,26 +878,26 @@ ORDER BY time DESC LIMIT 1;
 			UserUUID:  userUUID.String(),
 		}
 		err = tx.Query(ctx, getLastModelLoginTimeStmt, mll).Get(&mll)
-		if interrors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			if exists, err := st.checkModelExists(ctx, tx, modelUUID); err != nil {
-				return interrors.Errorf("checking model exists %w", err)
+				return errors.Errorf("checking model exists %w", err)
 			} else if !exists {
 				return modelerrors.NotFound
 			}
 			return accesserrors.UserNeverAccessedModel
 		} else if err != nil {
-			return interrors.Errorf("running query getLastModelLoginTime %w", err)
+			return errors.Errorf("running query getLastModelLoginTime %w", err)
 		}
 
 		lastConnection = mll.Time
 		if err != nil {
-			return interrors.Errorf("parsing time %w", err)
+			return errors.Errorf("parsing time %w", err)
 		}
 
 		return nil
 	})
 	if err != nil {
-		return time.Time{}, interrors.Capture(err)
+		return time.Time{}, errors.Capture(err)
 	}
 	return lastConnection.UTC(), nil
 }
@@ -924,24 +924,24 @@ WHERE      disabled = false`
 
 	insertDefineUserAuthenticationStmt, err := sqlair.Prepare(defineUserAuthenticationQuery, sqlair.M{})
 	if err != nil {
-		return interrors.Errorf("preparing insert defineUserAuthentication query %w", err)
+		return errors.Errorf("preparing insert defineUserAuthentication query %w", err)
 	}
 
 	var outcome sqlair.Outcome
 	err = tx.Query(ctx, insertDefineUserAuthenticationStmt, sqlair.M{"name": name.Name(), "disabled": false}).Get(&outcome)
 	if internaldatabase.IsErrConstraintForeignKey(err) {
-		return interrors.Errorf("%q %w", name, accesserrors.UserNotFound)
+		return errors.Errorf("%q %w", name, accesserrors.UserNotFound)
 	} else if err != nil {
-		return interrors.Errorf("setting authentication for user %q %w", name, err)
+		return errors.Errorf("setting authentication for user %q %w", name, err)
 	}
 
 	affected, err := outcome.Result().RowsAffected()
 	if err != nil {
-		return interrors.Errorf("determining results of setting authentication for user %q %w", name, err)
+		return errors.Errorf("determining results of setting authentication for user %q %w", name, err)
 	}
 
 	if affected == 0 {
-		return interrors.Errorf("%q %w", name, accesserrors.UserAuthenticationDisabled)
+		return errors.Errorf("%q %w", name, accesserrors.UserAuthenticationDisabled)
 	}
 	return nil
 }
@@ -954,7 +954,7 @@ WHERE      disabled = false`
 func setPasswordHash(ctx context.Context, tx *sqlair.TX, name user.Name, passwordHash string, salt []byte) error {
 	err := ensureUserAuthentication(ctx, tx, name)
 	if err != nil {
-		return interrors.Errorf("setting password hash for user %q %w", name, err)
+		return errors.Errorf("setting password hash for user %q %w", name, err)
 	}
 
 	setPasswordHashQuery := `
@@ -967,7 +967,7 @@ ON CONFLICT(user_uuid) DO UPDATE SET password_hash = excluded.password_hash, pas
 
 	insertSetPasswordHashStmt, err := sqlair.Prepare(setPasswordHashQuery, sqlair.M{})
 	if err != nil {
-		return interrors.Errorf("preparing insert setPasswordHash query %w", err)
+		return errors.Errorf("preparing insert setPasswordHash query %w", err)
 	}
 
 	err = tx.Query(ctx, insertSetPasswordHashStmt, sqlair.M{
@@ -976,7 +976,7 @@ ON CONFLICT(user_uuid) DO UPDATE SET password_hash = excluded.password_hash, pas
 		"password_salt": salt},
 	).Run()
 	if err != nil {
-		return interrors.Errorf("setting password hash for user %q %w", name, err)
+		return errors.Errorf("setting password hash for user %q %w", name, err)
 	}
 
 	return nil
@@ -989,7 +989,7 @@ ON CONFLICT(user_uuid) DO UPDATE SET password_hash = excluded.password_hash, pas
 func setActivationKey(ctx context.Context, tx *sqlair.TX, name user.Name, activationKey []byte) error {
 	err := ensureUserAuthentication(ctx, tx, name)
 	if err != nil {
-		return interrors.Errorf("setting activation key for user %q %w", name, err)
+		return errors.Errorf("setting activation key for user %q %w", name, err)
 	}
 
 	setActivationKeyQuery := `
@@ -1002,12 +1002,12 @@ ON CONFLICT(user_uuid) DO UPDATE SET activation_key = excluded.activation_key`
 
 	insertSetActivationKeyStmt, err := sqlair.Prepare(setActivationKeyQuery, sqlair.M{})
 	if err != nil {
-		return interrors.Errorf("preparing insert setActivationKey query %w", err)
+		return errors.Errorf("preparing insert setActivationKey query %w", err)
 	}
 
 	err = tx.Query(ctx, insertSetActivationKeyStmt, sqlair.M{"name": name.Name(), "activation_key": activationKey}).Run()
 	if err != nil {
-		return interrors.Errorf("setting activation key for user %q %w", name, err)
+		return errors.Errorf("setting activation key for user %q %w", name, err)
 	}
 
 	return nil
@@ -1019,15 +1019,15 @@ func (st *UserState) uuidForName(
 	var dbUUID userUUID
 	err := tx.Query(ctx, stmt, userName{Name: name.Name()}).Get(&dbUUID)
 	if err != nil {
-		if interrors.Is(err, sql.ErrNoRows) {
-			return "", interrors.Errorf("active user %q %w", name, accesserrors.UserNotFound)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", errors.Errorf("active user %q %w", name, accesserrors.UserNotFound)
 		}
-		return "", interrors.Errorf("getting user %q %w", name, err)
+		return "", errors.Errorf("getting user %q %w", name, err)
 	}
 
 	uuid := user.UUID(dbUUID.UUID)
 	if err := uuid.Validate(); err != nil {
-		return "", interrors.Errorf("invalid UUID for %q %w", name, accesserrors.UserNotFound)
+		return "", errors.Errorf("invalid UUID for %q %w", name, accesserrors.UserNotFound)
 	}
 	return uuid, nil
 }
@@ -1047,14 +1047,14 @@ SELECT true AS &dbModelExists.exists
 FROM model 
 WHERE model.uuid = $dbModelUUID.uuid`, dbModelUUID{}, dbModelExists{})
 	if err != nil {
-		return false, interrors.Errorf("preparing select checkModelExists %w", err)
+		return false, errors.Errorf("preparing select checkModelExists %w", err)
 	}
 	var exists dbModelExists
 	err = tx.Query(ctx, stmt, dbModelUUID{UUID: modelUUID.String()}).Get(&exists)
-	if interrors.Is(err, sqlair.ErrNoRows) {
+	if errors.Is(err, sqlair.ErrNoRows) {
 		return false, nil
 	} else if err != nil {
-		return false, interrors.Capture(err)
+		return false, errors.Capture(err)
 	}
 	return true, nil
 }

@@ -20,7 +20,7 @@ import (
 	"github.com/juju/juju/core/providertracker"
 	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/environs/envcontext"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // keysForContainerConfig lists the model config keys that we need to determine
@@ -97,7 +97,7 @@ func (s *Service) ContainerManagerConfigForType(
 
 	modelID, err := s.st.ModelID(ctx)
 	if err != nil {
-		return rval, interrors.Errorf("getting ID for current model: %w", err)
+		return rval, errors.Errorf("getting ID for current model: %w", err)
 	}
 
 	cfg, err := s.st.GetModelConfigKeyValues(ctx,
@@ -107,7 +107,7 @@ func (s *Service) ContainerManagerConfigForType(
 		config.ContainerImageStreamKey,
 	)
 	if err != nil {
-		return rval, interrors.Errorf(
+		return rval, errors.Errorf(
 			"cannot get model config keys when calculating container manager config: %w",
 			err)
 
@@ -130,7 +130,7 @@ func (s *Service) ContainerManagerConfigForType(
 func (s *Service) ContainerNetworkingMethod(ctx context.Context) (containermanager.NetworkingMethod, error) {
 	cfg, err := s.st.GetModelConfigKeyValues(ctx, config.ContainerNetworkingMethodKey)
 	if err != nil {
-		return "", interrors.Errorf("getting container networking method from model config: %w", err)
+		return "", errors.Errorf("getting container networking method from model config: %w", err)
 	}
 
 	method := modelconfig.ContainerNetworkingMethod(cfg[config.ContainerNetworkingMethodKey])
@@ -142,25 +142,25 @@ func (s *Service) ContainerNetworkingMethod(ctx context.Context) (containermanag
 	case modelconfig.ContainerNetworkingMethodAuto:
 		// Auto-configure container networking method below
 	default:
-		return "", interrors.Errorf("unable to deduce container networking method %q from model config", method)
+		return "", errors.Errorf("unable to deduce container networking method %q from model config", method)
 	}
 
 	provider, err := s.providerGetter(ctx)
-	if interrors.Is(err, coreerrors.NotSupported) {
+	if errors.Is(err, coreerrors.NotSupported) {
 		// Provider doesn't have the SupportsContainerAddresses method
 		return containermanager.NetworkingMethodLocal, nil
 	} else if err != nil {
-		return "", interrors.Errorf(
+		return "", errors.Errorf(
 			"cannot get networking provider for model: %w",
 			err)
 
 	}
 
 	supports, err := provider.SupportsContainerAddresses(envcontext.WithoutCredentialInvalidator(ctx))
-	if interrors.Is(err, coreerrors.NotSupported) {
+	if errors.Is(err, coreerrors.NotSupported) {
 		return containermanager.NetworkingMethodLocal, nil
 	} else if err != nil {
-		return "", interrors.Errorf(
+		return "", errors.Errorf(
 			"cannot determine if provider supports container addresses: %w",
 			err)
 
@@ -177,7 +177,7 @@ func (s *Service) ContainerConfig(ctx context.Context) (container.Config, error)
 
 	modelConfig, err := s.st.GetModelConfigKeyValues(ctx, keysForContainerConfig...)
 	if err != nil {
-		return result, interrors.Errorf(
+		return result, errors.Errorf(
 			"cannot get model config keys when calculating container config: %w",
 			err)
 

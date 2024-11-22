@@ -13,7 +13,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	coreerrors "github.com/juju/juju/core/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 )
 
@@ -37,7 +37,7 @@ func (s *serviceSuite) TestCheckCacheMiss(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	certName := "test-cert-name"
-	s.state.EXPECT().Get(gomock.Any(), certName).Return(nil, interrors.Errorf("autocert %s %w", certName, coreerrors.NotFound))
+	s.state.EXPECT().Get(gomock.Any(), certName).Return(nil, errors.Errorf("autocert %s %w", certName, coreerrors.NotFound))
 
 	svc := NewService(s.state, loggertesting.WrapCheckLog(c))
 
@@ -50,7 +50,7 @@ func (s *serviceSuite) TestCheckAnyError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	certName := "test-cert-name"
-	s.state.EXPECT().Get(gomock.Any(), certName).Return(nil, interrors.New("state error"))
+	s.state.EXPECT().Get(gomock.Any(), certName).Return(nil, errors.New("state error"))
 
 	svc := NewService(s.state, loggertesting.WrapCheckLog(c))
 

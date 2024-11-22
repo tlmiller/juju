@@ -14,7 +14,7 @@ import (
 	"github.com/juju/juju/domain/application/charm"
 	applicationerrors "github.com/juju/juju/domain/application/errors"
 	internalcharm "github.com/juju/juju/internal/charm"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // Conversion code is used to decode charm.Manifest code to non-domain
@@ -25,7 +25,7 @@ import (
 func decodeManifest(manifest charm.Manifest) (internalcharm.Manifest, error) {
 	bases, err := decodeManifestBases(manifest.Bases)
 	if err != nil {
-		return internalcharm.Manifest{}, interrors.Errorf("decode bases: %w", err)
+		return internalcharm.Manifest{}, errors.Errorf("decode bases: %w", err)
 	}
 
 	return internalcharm.Manifest{
@@ -38,7 +38,7 @@ func decodeManifestBases(bases []charm.Base) ([]internalcharm.Base, error) {
 	for _, base := range bases {
 		decodedBase, err := decodeManifestBase(base)
 		if err != nil {
-			return nil, interrors.Errorf("decode base: %w", err)
+			return nil, errors.Errorf("decode base: %w", err)
 		}
 		decoded = append(decoded, decodedBase)
 	}
@@ -48,7 +48,7 @@ func decodeManifestBases(bases []charm.Base) ([]internalcharm.Base, error) {
 func decodeManifestBase(base charm.Base) (internalcharm.Base, error) {
 	channel, err := decodeManifestChannel(base.Channel)
 	if err != nil {
-		return internalcharm.Base{}, interrors.Errorf("decode channel: %w", err)
+		return internalcharm.Base{}, errors.Errorf("decode channel: %w", err)
 	}
 
 	return internalcharm.Base{
@@ -61,7 +61,7 @@ func decodeManifestBase(base charm.Base) (internalcharm.Base, error) {
 func decodeManifestChannel(channel charm.Channel) (internalcharm.Channel, error) {
 	risk, err := decodeManifestRisk(channel.Risk)
 	if err != nil {
-		return internalcharm.Channel{}, interrors.Errorf("decode risk: %w", err)
+		return internalcharm.Channel{}, errors.Errorf("decode risk: %w", err)
 	}
 
 	return internalcharm.Channel{
@@ -82,7 +82,7 @@ func decodeManifestRisk(risk charm.ChannelRisk) (internalcharm.Risk, error) {
 	case charm.RiskEdge:
 		return internalcharm.Edge, nil
 	default:
-		return "", interrors.Errorf("unknown risk: %q", risk)
+		return "", errors.Errorf("unknown risk: %q", risk)
 	}
 }
 
@@ -93,7 +93,7 @@ func encodeManifest(manifest *internalcharm.Manifest) (charm.Manifest, []string,
 
 	bases, warnings, err := encodeManifestBases(manifest.Bases)
 	if err != nil {
-		return charm.Manifest{}, warnings, interrors.Errorf("encode bases: %w", err)
+		return charm.Manifest{}, warnings, errors.Errorf("encode bases: %w", err)
 	}
 
 	return charm.Manifest{
@@ -107,7 +107,7 @@ func encodeManifestBases(bases []internalcharm.Base) ([]charm.Base, []string, er
 	for _, base := range bases {
 		encodedBase, unsupported, err := encodeManifestBase(base)
 		if err != nil {
-			return nil, unsupportedArches, interrors.Errorf("encode base: %w", err)
+			return nil, unsupportedArches, errors.Errorf("encode base: %w", err)
 		}
 		encoded = append(encoded, encodedBase)
 		unsupportedArches = append(unsupportedArches, unsupported...)
@@ -122,14 +122,14 @@ func encodeManifestBase(base internalcharm.Base) (charm.Base, []string, error) {
 	// Juju only supports Ubuntu bases.
 	baseType, err := ostype.ParseOSType(base.Name)
 	if err != nil {
-		return charm.Base{}, nil, interrors.Errorf("parse base name: %w", err)
+		return charm.Base{}, nil, errors.Errorf("parse base name: %w", err)
 	} else if baseType != ostype.Ubuntu {
 		return charm.Base{}, nil, applicationerrors.CharmBaseNameNotSupported
 	}
 
 	channel, err := encodeManifestChannel(base.Channel)
 	if err != nil {
-		return charm.Base{}, nil, interrors.Errorf("encode channel: %w", err)
+		return charm.Base{}, nil, errors.Errorf("encode channel: %w", err)
 	}
 
 	arches := set.NewStrings()
@@ -170,7 +170,7 @@ func encodeManifestBase(base internalcharm.Base) (charm.Base, []string, error) {
 func encodeManifestChannel(channel internalcharm.Channel) (charm.Channel, error) {
 	risk, err := encodeManifestRisk(channel.Risk)
 	if err != nil {
-		return charm.Channel{}, interrors.Errorf("encode risk: %w", err)
+		return charm.Channel{}, errors.Errorf("encode risk: %w", err)
 	}
 
 	return charm.Channel{
@@ -191,6 +191,6 @@ func encodeManifestRisk(risk internalcharm.Risk) (charm.ChannelRisk, error) {
 	case internalcharm.Edge:
 		return charm.RiskEdge, nil
 	default:
-		return "", interrors.Errorf("unknown risk: %q", risk)
+		return "", errors.Errorf("unknown risk: %q", risk)
 	}
 }

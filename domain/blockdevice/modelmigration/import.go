@@ -13,7 +13,7 @@ import (
 	"github.com/juju/juju/core/modelmigration"
 	"github.com/juju/juju/domain/blockdevice/service"
 	"github.com/juju/juju/domain/blockdevice/state"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // Coordinator is the interface that is used to add operations to a migration.
@@ -83,7 +83,7 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 			}
 		}
 		if err := i.service.UpdateBlockDevices(ctx, m.Id(), machineBlockDevices...); err != nil {
-			return interrors.Errorf("importing block devices for machine %q %w", m.Id(), err)
+			return errors.Errorf("importing block devices for machine %q %w", m.Id(), err)
 		}
 	}
 	return nil

@@ -10,7 +10,7 @@ import (
 	coreobjectstore "github.com/juju/juju/core/objectstore"
 	"github.com/juju/juju/core/watcher"
 	"github.com/juju/juju/core/watcher/eventsource"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State describes retrieval and persistence methods for the coreobjectstore.
@@ -51,7 +51,7 @@ func NewService(st State) *Service {
 func (s *Service) GetMetadata(ctx context.Context, path string) (coreobjectstore.Metadata, error) {
 	metadata, err := s.st.GetMetadata(ctx, path)
 	if err != nil {
-		return coreobjectstore.Metadata{}, interrors.Errorf("retrieving metadata %s %w", path, err)
+		return coreobjectstore.Metadata{}, errors.Errorf("retrieving metadata %s %w", path, err)
 	}
 	return coreobjectstore.Metadata{
 		Path: metadata.Path,
@@ -64,7 +64,7 @@ func (s *Service) GetMetadata(ctx context.Context, path string) (coreobjectstore
 func (s *Service) ListMetadata(ctx context.Context) ([]coreobjectstore.Metadata, error) {
 	metadata, err := s.st.ListMetadata(ctx)
 	if err != nil {
-		return nil, interrors.Errorf("retrieving metadata: %w", err)
+		return nil, errors.Errorf("retrieving metadata: %w", err)
 	}
 	m := make([]coreobjectstore.Metadata, len(metadata))
 	for i, v := range metadata {
@@ -85,7 +85,7 @@ func (s *Service) PutMetadata(ctx context.Context, metadata coreobjectstore.Meta
 		Size: metadata.Size,
 	})
 	if err != nil {
-		return interrors.Errorf("adding path %s %w", metadata.Path, err)
+		return errors.Errorf("adding path %s %w", metadata.Path, err)
 	}
 	return nil
 }
@@ -94,7 +94,7 @@ func (s *Service) PutMetadata(ctx context.Context, metadata coreobjectstore.Meta
 func (s *Service) RemoveMetadata(ctx context.Context, path string) error {
 	err := s.st.RemoveMetadata(ctx, path)
 	if err != nil {
-		return interrors.Errorf("removing path %s %w", path, err)
+		return errors.Errorf("removing path %s %w", path, err)
 	}
 	return nil
 }

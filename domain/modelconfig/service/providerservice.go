@@ -12,7 +12,7 @@ import (
 	"github.com/juju/juju/core/watcher"
 	"github.com/juju/juju/core/watcher/eventsource"
 	"github.com/juju/juju/environs/config"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // ProviderState defines the state methods required by the ProviderService.
@@ -46,7 +46,7 @@ func NewProviderService(
 func (s *ProviderService) ModelConfig(ctx context.Context) (*config.Config, error) {
 	stConfig, err := s.st.ModelConfig(ctx)
 	if err != nil {
-		return nil, interrors.Errorf("getting model config from state: %w", err)
+		return nil, errors.Errorf("getting model config from state: %w", err)
 	}
 
 	altConfig := transform.Map(stConfig, func(k, v string) (string, any) { return k, v })

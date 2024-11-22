@@ -11,7 +11,7 @@ import (
 	"github.com/mattn/go-sqlite3"
 	gc "gopkg.in/check.v1"
 
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type asError struct {
@@ -70,8 +70,8 @@ func (e *errorsSuite) TestMaskErrorIsHidesSqlErrors(c *gc.C) {
 	}
 
 	for _, test := range tests {
-		err := maskError{interrors.Errorf("%q %w", test.Name, test.Error)}
-		c.Check(interrors.Is(err, test.Error), jc.IsFalse, gc.Commentf(test.Name))
+		err := maskError{errors.Errorf("%q %w", test.Name, test.Error)}
+		c.Check(errors.Is(err, test.Error), jc.IsFalse, gc.Commentf(test.Name))
 	}
 }
 
@@ -81,15 +81,15 @@ func (e *errorsSuite) TestErrorMessagePreserved(c *gc.C) {
 		Expected string
 	}{
 		{
-			Error:    interrors.Errorf("wrap orig error: %w", sql.ErrNoRows),
+			Error:    errors.Errorf("wrap orig error: %w", sql.ErrNoRows),
 			Expected: "wrap orig error: sql: no rows in result set",
 		},
 		{
-			Error:    interrors.Errorf("wrap orig error: %w%w", sql.ErrNoRows, dqlite.Error{Code: dqlite.ErrBusy}),
+			Error:    errors.Errorf("wrap orig error: %w%w", sql.ErrNoRows, dqlite.Error{Code: dqlite.ErrBusy}),
 			Expected: "wrap orig error: sql: no rows in result set",
 		},
 		{
-			Error:    interrors.Errorf("wrap orig error: %w - %w", sql.ErrNoRows, interrors.Errorf("nested error")),
+			Error:    errors.Errorf("wrap orig error: %w - %w", sql.ErrNoRows, errors.Errorf("nested error")),
 			Expected: "wrap orig error: sql: no rows in result set - nested error",
 		},
 	}
@@ -102,39 +102,39 @@ func (e *errorsSuite) TestErrorMessagePreserved(c *gc.C) {
 // TestMaskErrorIsNoHide is here to check that if maskError contains non sql
 // errors within its chain that it doesn't attempt to hide their existence.
 func (e *errorsSuite) TestMaskErrorIsNoHide(c *gc.C) {
-	origError := interrors.New("test error")
-	err := interrors.Errorf("wrap orig error: %w", origError)
+	origError := errors.New("test error")
+	err := errors.Errorf("wrap orig error: %w", origError)
 	maskErr := maskError{err}
-	c.Check(interrors.Is(maskErr, origError), jc.IsTrue)
+	c.Check(errors.Is(maskErr, origError), jc.IsTrue)
 
 	sqlErr := sqlite3.Error{
 		Code:         sqlite3.ErrAbort,
 		ExtendedCode: sqlite3.ErrBusyRecovery,
 	}
 
-	err = interrors.Errorf("double wrap %w %w", sqlErr, origError)
+	err = errors.Errorf("double wrap %w %w", sqlErr, origError)
 	maskErr = maskError{err}
-	c.Check(interrors.Is(maskErr, origError), jc.IsTrue)
+	c.Check(errors.Is(maskErr, origError), jc.IsTrue)
 }
 
 // TestMaskErrorAsNoHide is here to check that if maskError contains non sql
 // errors within its chain that it doesn't attempt to hide their existence.
 func (e *errorsSuite) TestMaskErrorAsNoHide(c *gc.C) {
 	origError := asError{"ipv6 rocks"}
-	err := interrors.Errorf("wrap orig error: %w", origError)
+	err := errors.Errorf("wrap orig error: %w", origError)
 	maskErr := maskError{err}
 
 	var rval asError
-	c.Check(interrors.As(maskErr, &rval), jc.IsTrue)
+	c.Check(errors.As(maskErr, &rval), jc.IsTrue)
 
 	sqlErr := sqlite3.Error{
 		Code:         sqlite3.ErrAbort,
 		ExtendedCode: sqlite3.ErrBusyRecovery,
 	}
 
-	err = interrors.Errorf("double wrap %w %w", sqlErr, origError)
+	err = errors.Errorf("double wrap %w %w", sqlErr, origError)
 	maskErr = maskError{err}
-	c.Check(interrors.As(maskErr, &rval), jc.IsTrue)
+	c.Check(errors.As(maskErr, &rval), jc.IsTrue)
 }
 
 // TestMaskErrorAsHidesSqlLiteErrors is here to assert that if we try and
@@ -147,7 +147,7 @@ func (e *errorsSuite) TestMaskErrorAsHidesSqlLiteErrors(c *gc.C) {
 		ExtendedCode: sqlite3.ErrBusyRecovery,
 	}}
 
-	c.Check(interrors.As(err, &rval), jc.IsFalse)
+	c.Check(errors.As(err, &rval), jc.IsFalse)
 }
 
 // TestMaskErrorAsHidesSqlLiteErrors is here to assert that if we try and
@@ -160,5 +160,5 @@ func (e *errorsSuite) TestMaskErrorAsHidesDQLiteErrors(c *gc.C) {
 		Message: "something went wrong",
 	}}
 
-	c.Check(interrors.As(err, &rval), jc.IsFalse)
+	c.Check(errors.As(err, &rval), jc.IsFalse)
 }

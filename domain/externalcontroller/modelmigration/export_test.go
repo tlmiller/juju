@@ -14,7 +14,7 @@ import (
 
 	"github.com/juju/juju/core/crossmodel"
 	coreerrors "github.com/juju/juju/core/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type exportSuite struct {
@@ -177,7 +177,7 @@ func (s *exportSuite) TestExportExternalControllerWithNoControllerNotFound(c *gc
 
 	s.service.EXPECT().ControllersForModels(gomock.Any(), []string{modelUUID}).
 		Times(1).
-		Return(nil, interrors.Errorf("test-external-controller %w", coreerrors.NotFound))
+		Return(nil, errors.Errorf("test-external-controller %w", coreerrors.NotFound))
 
 	op := s.newExportOperation()
 	err := op.Execute(context.Background(), dst)
@@ -195,7 +195,7 @@ func (s *exportSuite) TestExportExternalControllerFailsGettingExternalController
 
 	s.service.EXPECT().ControllersForModels(gomock.Any(), []string{modelUUID}).
 		Times(1).
-		Return(nil, interrors.New("fail"))
+		Return(nil, errors.New("fail"))
 
 	op := s.newExportOperation()
 	err := op.Execute(context.Background(), dst)

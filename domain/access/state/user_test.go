@@ -25,7 +25,7 @@ import (
 	schematesting "github.com/juju/juju/domain/schema/testing"
 	"github.com/juju/juju/internal/auth"
 	"github.com/juju/juju/internal/database"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 )
 
@@ -107,7 +107,7 @@ func (s *userStateSuite) TestSingletonActiveUser(c *gc.C) {
 func generateActivationKey() ([]byte, error) {
 	var activationKey [32]byte
 	if _, err := rand.Read(activationKey[:]); err != nil {
-		return nil, interrors.Errorf("generating activation key %w", err)
+		return nil, errors.Errorf("generating activation key %w", err)
 	}
 	return activationKey[:], nil
 }

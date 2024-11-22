@@ -13,7 +13,7 @@ import (
 	"github.com/juju/juju/core/logger"
 	"github.com/juju/juju/core/watcher/eventsource"
 	"github.com/juju/juju/domain/life"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // LifeGetter is a function which looks up life values of the entities with the specified IDs.
@@ -59,7 +59,7 @@ func LifeStringsWatcherMapperFunc(logger logger.Logger, lifeGetter LifeGetter) e
 		// Gather the latest life values of the ids.
 		currentValues, err := lifeGetter(ctx, db, ids.Values())
 		if err != nil {
-			return nil, interrors.Capture(err)
+			return nil, errors.Capture(err)
 		}
 
 		// We queried the ids that were not removed. The result contains

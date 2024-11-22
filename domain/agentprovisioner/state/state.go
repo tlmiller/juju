@@ -12,7 +12,7 @@ import (
 	"github.com/juju/juju/core/model"
 	"github.com/juju/juju/domain"
 	modelerrors "github.com/juju/juju/domain/model/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State is responsible for accessing the controller/model DB to retrieve the
@@ -42,7 +42,7 @@ func (s *State) GetModelConfigKeyValues(
 
 	db, err := s.DB()
 	if err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 
 	input := make(sqlair.S, 0, len(keys))
@@ -57,7 +57,7 @@ WHERE key in ($S[:])
 `, input, modelConfigRow{})
 
 	if err != nil {
-		return nil, interrors.Errorf(
+		return nil, errors.Errorf(
 			"preparing get model config key values: %w", domain.CoerceError(err))
 
 	}
@@ -65,10 +65,10 @@ WHERE key in ($S[:])
 	result := make([]modelConfigRow, 0, len(keys))
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt, &input).GetAll(&result)
-		if interrors.Is(err, sqlair.ErrNoRows) {
+		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		} else if err != nil {
-			return interrors.Errorf(
+			return errors.Errorf(
 				"getting model config key values: %w",
 				domain.CoerceError(err))
 
@@ -92,7 +92,7 @@ WHERE key in ($S[:])
 func (s *State) ModelID(ctx context.Context) (model.UUID, error) {
 	db, err := s.DB()
 	if err != nil {
-		return "", interrors.Capture(err)
+		return "", errors.Capture(err)
 	}
 
 	stmt, err := s.Prepare(`
@@ -101,7 +101,7 @@ FROM model
 `, modelInfo{})
 
 	if err != nil {
-		return "", interrors.Errorf(
+		return "", errors.Errorf(
 			"preparing get model statement: %w", domain.CoerceError(err))
 
 	}
@@ -111,7 +111,7 @@ FROM model
 		return tx.Query(ctx, stmt).GetAll(&result)
 	})
 
-	if err != nil && !interrors.Is(err, sqlair.ErrNoRows) {
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
 		return "", modelerrors.NotFound
 	}
 	if len(result) == 0 {

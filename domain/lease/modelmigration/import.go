@@ -14,7 +14,7 @@ import (
 	"github.com/juju/juju/core/modelmigration"
 	"github.com/juju/juju/domain/lease/service"
 	"github.com/juju/juju/domain/lease/state"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 const (
@@ -75,7 +75,7 @@ func (o *importOperation) Execute(ctx context.Context, model description.Model) 
 			Duration: LeadershipGuarantee,
 		}
 		if err := o.service.ClaimLease(ctx, key, req); err != nil {
-			return interrors.Errorf("claiming lease for %q %w", key, err)
+			return errors.Errorf("claiming lease for %q %w", key, err)
 		}
 	}
 

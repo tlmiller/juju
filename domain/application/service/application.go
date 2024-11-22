@@ -11,7 +11,6 @@ import (
 
 	"github.com/juju/clock"
 	"github.com/juju/collections/transform"
-	"github.com/juju/errors"
 	"github.com/juju/names/v5"
 	"github.com/juju/version/v2"
 
@@ -750,7 +749,7 @@ func (s *ApplicationService) RegisterCAASUnit(ctx context.Context, appName strin
 			return s.insertCAASUnit(ctx, appID, args.OrderedId, arg)
 		}
 		if unitLife == life.Dead {
-			return interrors.Errorf("dead unit %q already exists%w", args.UnitName, errors.Hide(applicationerrors.UnitAlreadyExists))
+			return interrors.Errorf("dead unit %q already exists%w", args.UnitName).Add(applicationerrors.UnitAlreadyExists)
 		}
 		if err := s.st.UpdateUnitContainer(ctx, args.UnitName, cloudContainer); err != nil {
 			return interrors.Errorf("updating unit %q %w", args.UnitName, err)
@@ -778,7 +777,7 @@ func (s *ApplicationService) insertCAASUnit(
 	}
 	if orderedID >= appScale.Scale ||
 		(appScale.Scaling && orderedID >= appScale.ScaleTarget) {
-		return interrors.Errorf("unrequired unit %s is not assigned%w", arg.UnitName, errors.Hide(applicationerrors.UnitNotAssigned))
+		return interrors.Errorf("unrequired unit %s is not assigned%w", arg.UnitName).Add(applicationerrors.UnitNotAssigned)
 	}
 	return s.st.InsertUnit(ctx, appID, arg)
 }
@@ -811,7 +810,7 @@ func (s *ApplicationService) UpdateCAASUnit(ctx context.Context, unitName coreun
 			return interrors.Errorf("getting application %q life: %w", appName, err)
 		}
 		if appLife != life.Alive {
-			return interrors.Errorf("application %q is not alive%w", appName, errors.Hide(applicationerrors.ApplicationNotAlive))
+			return interrors.Errorf("application %q is not alive%w", appName).Add(applicationerrors.ApplicationNotAlive)
 		}
 
 		if cloudContainer != nil {
@@ -1173,7 +1172,7 @@ func (s *ApplicationService) GetApplicationLife(ctx context.Context, appName str
 // This is used on CAAS models.
 func (s *ApplicationService) SetApplicationScale(ctx context.Context, appName string, scale int) error {
 	if scale < 0 {
-		return interrors.Errorf("application scale %d not valid%w", scale, errors.Hide(applicationerrors.ScaleChangeInvalid))
+		return interrors.Errorf("application scale %d not valid%w", scale).Add(applicationerrors.ScaleChangeInvalid)
 	}
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.GetApplicationID(ctx, appName)

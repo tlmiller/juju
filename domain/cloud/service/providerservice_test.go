@@ -13,7 +13,7 @@ import (
 	"github.com/juju/juju/cloud"
 	coreerrors "github.com/juju/juju/core/errors"
 	"github.com/juju/juju/core/watcher/watchertest"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type providerServiceSuite struct {
@@ -38,7 +38,7 @@ func (s *providerServiceSuite) TestCloud(c *gc.C) {
 func (s *providerServiceSuite) TestCloudNotFound(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	s.state.EXPECT().Cloud(gomock.Any(), "fluffy").Return(nil, interrors.Errorf(`cloud "fluffy"`+" %w", coreerrors.NotFound))
+	s.state.EXPECT().Cloud(gomock.Any(), "fluffy").Return(nil, errors.Errorf(`cloud "fluffy"`+" %w", coreerrors.NotFound))
 
 	result, err := NewWatchableProviderService(s.state, s.watcherFactory).Cloud(context.Background(), "fluffy")
 	c.Assert(err, gc.ErrorMatches, `cloud "fluffy" not found`)

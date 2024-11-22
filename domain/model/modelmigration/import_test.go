@@ -25,7 +25,7 @@ import (
 	"github.com/juju/juju/domain/model"
 	modelerrors "github.com/juju/juju/domain/model/errors"
 	"github.com/juju/juju/environs/config"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 	"github.com/juju/juju/internal/testing"
 	"github.com/juju/juju/internal/uuid"
@@ -235,7 +235,7 @@ func (i *importSuite) TestModelCreateRollbacksOnFailure(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	i.modelService.EXPECT().ImportModel(gomock.Any(), args).Return(activator, nil)
-	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(interrors.New("boom"))
+	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(errors.New("boom"))
 	i.modelService.EXPECT().DeleteModel(gomock.Any(), modelUUID, gomock.Any()).DoAndReturn(func(_ context.Context, _ coremodel.UUID, options ...model.DeleteModelOption) error {
 		opts := model.DefaultDeleteModelOptions()
 		for _, fn := range options {
@@ -322,7 +322,7 @@ func (i *importSuite) TestModelCreateRollbacksOnFailureIgnoreNotFoundModel(c *gc
 	c.Assert(err, jc.ErrorIsNil)
 
 	i.modelService.EXPECT().ImportModel(gomock.Any(), args).Return(activator, nil)
-	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(interrors.New("boom"))
+	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(errors.New("boom"))
 	i.modelService.EXPECT().DeleteModel(gomock.Any(), modelUUID, gomock.Any()).Return(modelerrors.NotFound)
 	i.readOnlyModelService.EXPECT().DeleteModel(gomock.Any()).Return(nil)
 
@@ -402,7 +402,7 @@ func (i *importSuite) TestModelCreateRollbacksOnFailureIgnoreNotFoundReadOnlyMod
 	c.Assert(err, jc.ErrorIsNil)
 
 	i.modelService.EXPECT().ImportModel(gomock.Any(), args).Return(activator, nil)
-	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(interrors.New("boom"))
+	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(errors.New("boom"))
 	i.modelService.EXPECT().DeleteModel(gomock.Any(), modelUUID, gomock.Any()).Return(nil)
 	i.readOnlyModelService.EXPECT().DeleteModel(gomock.Any()).Return(nil)
 

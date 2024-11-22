@@ -14,7 +14,7 @@ import (
 	domainstorage "github.com/juju/juju/domain/storage"
 	storageerrors "github.com/juju/juju/domain/storage/errors"
 	"github.com/juju/juju/internal/charm"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/storage"
 	"github.com/juju/juju/internal/storage/provider"
 )
@@ -69,7 +69,7 @@ func (mockStoragePoolGetter) GetStoragePoolByName(_ context.Context, name string
 	case "tmp":
 		return domainstorage.StoragePoolDetails{Name: name, Provider: "tmpfs", Attrs: map[string]string{"storage-medium": "foo"}}, nil
 	}
-	return domainstorage.StoragePoolDetails{}, interrors.Errorf("storage pool %q not found%w", name).Add(storageerrors.PoolNotFoundError)
+	return domainstorage.StoragePoolDetails{}, errors.Errorf("storage pool %q not found%w", name).Add(storageerrors.PoolNotFoundError)
 }
 
 type mockCharm struct {
@@ -83,7 +83,7 @@ func (m mockCharm) Meta() *charm.Meta {
 func (s *validationSuite) validateStorageDirectives(storage map[string]storage.Directive) error {
 	validator, err := domainstorage.NewStorageDirectivesValidator(s.modelType, provider.CommonStorageProviders(), mockStoragePoolGetter{})
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 	return validator.ValidateStorageDirectivesAgainstCharm(
 		context.Background(),

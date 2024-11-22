@@ -15,7 +15,7 @@ import (
 	coreupgrade "github.com/juju/juju/core/upgrade"
 	"github.com/juju/juju/core/watcher/watchertest"
 	upgradeerrors "github.com/juju/juju/domain/upgrade/errors"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 type serviceSuite struct {
@@ -116,7 +116,7 @@ func (s *serviceSuite) TestActiveUpgrade(c *gc.C) {
 func (s *serviceSuite) TestActiveUpgradeNoUpgrade(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	s.state.EXPECT().ActiveUpgrade(gomock.Any()).Return(s.upgradeUUID, interrors.Capture(upgradeerrors.NotFound))
+	s.state.EXPECT().ActiveUpgrade(gomock.Any()).Return(s.upgradeUUID, errors.Capture(upgradeerrors.NotFound))
 
 	_, err := s.service.ActiveUpgrade(context.Background())
 	c.Assert(err, jc.ErrorIs, upgradeerrors.NotFound)
@@ -186,7 +186,7 @@ func (s *serviceSuite) TestIsUpgrade(c *gc.C) {
 func (s *serviceSuite) TestIsUpgradeNoUpgrade(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	s.state.EXPECT().ActiveUpgrade(gomock.Any()).Return(s.upgradeUUID, interrors.Capture(upgradeerrors.NotFound))
+	s.state.EXPECT().ActiveUpgrade(gomock.Any()).Return(s.upgradeUUID, errors.Capture(upgradeerrors.NotFound))
 
 	upgrading, err := s.service.IsUpgrading(context.Background())
 	c.Assert(err, jc.ErrorIsNil)
@@ -196,7 +196,7 @@ func (s *serviceSuite) TestIsUpgradeNoUpgrade(c *gc.C) {
 func (s *serviceSuite) TestIsUpgradeError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	s.state.EXPECT().ActiveUpgrade(gomock.Any()).Return(s.upgradeUUID, interrors.New("boom"))
+	s.state.EXPECT().ActiveUpgrade(gomock.Any()).Return(s.upgradeUUID, errors.New("boom"))
 
 	upgrading, err := s.service.IsUpgrading(context.Background())
 	c.Assert(err, gc.ErrorMatches, `boom`)

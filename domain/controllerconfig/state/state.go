@@ -12,7 +12,7 @@ import (
 	"github.com/juju/juju/controller"
 	"github.com/juju/juju/core/database"
 	"github.com/juju/juju/domain"
-	interrors "github.com/juju/juju/internal/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State represents a type for interacting with the underlying state.
@@ -31,22 +31,22 @@ func NewState(factory database.TxnRunnerFactory) *State {
 func (st *State) ControllerConfig(ctx context.Context) (map[string]string, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 
 	stmt, err := st.Prepare("SELECT &KeyValue.* FROM v_controller_config", KeyValue{})
 	if err != nil {
-		return nil, interrors.Capture(err)
+		return nil, errors.Capture(err)
 	}
 
 	result := make(map[string]string)
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		var keyValues []KeyValue
 		if err := tx.Query(ctx, stmt).GetAll(&keyValues); err != nil {
-			if interrors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, sql.ErrNoRows) {
 				return nil
 			}
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		for _, kv := range keyValues {
@@ -73,17 +73,17 @@ func (st *State) UpdateControllerConfig(
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	selectStmt, err := st.Prepare("SELECT &KeyValue.* FROM v_controller_config", KeyValue{})
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	deleteStmt, err := st.Prepare("DELETE FROM controller_config WHERE key IN ($StringSlice[:])", StringSlice{})
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	updateStmt, err := st.Prepare(`
@@ -91,7 +91,7 @@ INSERT INTO controller_config (key, value)
 VALUES ($KeyValue.*)
   ON CONFLICT(key) DO UPDATE SET value=excluded.value`, KeyValue{})
 	if err != nil {
-		return interrors.Capture(err)
+		return errors.Capture(err)
 	}
 	updateKeyValues := make([]KeyValue, 0)
 	for k, v := range updateAttrs {
@@ -111,8 +111,8 @@ VALUES ($KeyValue.*)
 		// Check keys and values are valid between current and new config.
 		var keyValues []KeyValue
 		if err := tx.Query(ctx, selectStmt).GetAll(&keyValues); err != nil {
-			if !interrors.Is(err, sql.ErrNoRows) {
-				return interrors.Capture(err)
+			if !errors.Is(err, sql.ErrNoRows) {
+				return errors.Capture(err)
 			}
 		}
 
@@ -121,25 +121,25 @@ VALUES ($KeyValue.*)
 			current[kv.Key] = kv.Value
 		}
 		if err := validateModification(current); err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		// Update the attributes.
 		if err := tx.Query(ctx, updateStmt, updateKeyValues).Run(); err != nil {
-			return interrors.Capture(err)
+			return errors.Capture(err)
 		}
 
 		// Remove the attributes
 		if len(removeAttrs) > 0 {
 			if err := tx.Query(ctx, deleteStmt, StringSlice(removeAttrs)).Run(); err != nil {
-				return interrors.Capture(err)
+				return errors.Capture(err)
 			}
 		}
 
 		return nil
 	})
 
-	return interrors.Capture(err)
+	return errors.Capture(err)
 }
 
 // AllKeysQuery returns a SQL statement that will return
