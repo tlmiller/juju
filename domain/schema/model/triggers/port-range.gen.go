@@ -8,7 +8,6 @@ import (
 	"github.com/juju/juju/core/database/schema"
 )
 
-
 // ChangeLogTriggersForPortRange generates the triggers for the
 // port_range table.
 func ChangeLogTriggersForPortRange(columnName string, namespaceID int) func() schema.Patch {
@@ -47,4 +46,3 @@ BEGIN
 END;`, columnName, namespaceID))
 	}
 }
-

@@ -5,10 +5,7 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"regexp"
-
-	"github.com/juju/errors"
 
 	"github.com/juju/juju/core/changestream"
 	corecharm "github.com/juju/juju/core/charm"
@@ -18,6 +15,7 @@ import (
 	"github.com/juju/juju/domain/application/charm"
 	applicationerrors "github.com/juju/juju/domain/application/errors"
 	internalcharm "github.com/juju/juju/internal/charm"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 var (
@@ -175,11 +173,11 @@ func (s *CharmService) GetCharmID(ctx context.Context, args charm.GetCharmArgs) 
 // charm does not exist, a [applicationerrors.CharmNotFound] error is returned.
 func (s *CharmService) IsControllerCharm(ctx context.Context, id corecharm.ID) (bool, error) {
 	if err := id.Validate(); err != nil {
-		return false, fmt.Errorf("charm id: %w", err)
+		return false, interrors.Errorf("charm id: %w", err)
 	}
 	b, err := s.st.IsControllerCharm(ctx, id)
 	if err != nil {
-		return false, errors.Trace(err)
+		return false, interrors.Capture(err)
 	}
 	return b, nil
 }
@@ -193,11 +191,11 @@ func (s *CharmService) IsControllerCharm(ctx context.Context, id corecharm.ID) (
 // returned.
 func (s *CharmService) SupportsContainers(ctx context.Context, id corecharm.ID) (bool, error) {
 	if err := id.Validate(); err != nil {
-		return false, fmt.Errorf("charm id: %w", err)
+		return false, interrors.Errorf("charm id: %w", err)
 	}
 	b, err := s.st.SupportsContainers(ctx, id)
 	if err != nil {
-		return false, errors.Trace(err)
+		return false, interrors.Capture(err)
 	}
 	return b, nil
 }
@@ -210,11 +208,11 @@ func (s *CharmService) SupportsContainers(ctx context.Context, id corecharm.ID) 
 // returned.
 func (s *CharmService) IsSubordinateCharm(ctx context.Context, id corecharm.ID) (bool, error) {
 	if err := id.Validate(); err != nil {
-		return false, fmt.Errorf("charm id: %w", err)
+		return false, interrors.Errorf("charm id: %w", err)
 	}
 	b, err := s.st.IsSubordinateCharm(ctx, id)
 	if err != nil {
-		return false, errors.Trace(err)
+		return false, interrors.Capture(err)
 	}
 	return b, nil
 }
@@ -230,39 +228,39 @@ func (s *CharmService) IsSubordinateCharm(ctx context.Context, id corecharm.ID) 
 // returned.
 func (s *CharmService) GetCharm(ctx context.Context, id corecharm.ID) (internalcharm.Charm, charm.CharmOrigin, error) {
 	if err := id.Validate(); err != nil {
-		return nil, charm.CharmOrigin{}, fmt.Errorf("charm id: %w", err)
+		return nil, charm.CharmOrigin{}, interrors.Errorf("charm id: %w", err)
 	}
 
 	resultCharm, resultOrigin, err := s.st.GetCharm(ctx, id)
 	if err != nil {
-		return nil, charm.CharmOrigin{}, errors.Trace(err)
+		return nil, charm.CharmOrigin{}, interrors.Capture(err)
 	}
 
 	// The charm needs to be decoded into the internalcharm.Charm type.
 
 	metadata, err := decodeMetadata(resultCharm.Metadata)
 	if err != nil {
-		return nil, charm.CharmOrigin{}, errors.Trace(err)
+		return nil, charm.CharmOrigin{}, interrors.Capture(err)
 	}
 
 	manifest, err := decodeManifest(resultCharm.Manifest)
 	if err != nil {
-		return nil, charm.CharmOrigin{}, errors.Trace(err)
+		return nil, charm.CharmOrigin{}, interrors.Capture(err)
 	}
 
 	actions, err := decodeActions(resultCharm.Actions)
 	if err != nil {
-		return nil, charm.CharmOrigin{}, errors.Trace(err)
+		return nil, charm.CharmOrigin{}, interrors.Capture(err)
 	}
 
 	config, err := decodeConfig(resultCharm.Config)
 	if err != nil {
-		return nil, charm.CharmOrigin{}, errors.Trace(err)
+		return nil, charm.CharmOrigin{}, interrors.Capture(err)
 	}
 
 	lxdProfile, err := decodeLXDProfile(resultCharm.LXDProfile)
 	if err != nil {
-		return nil, charm.CharmOrigin{}, errors.Trace(err)
+		return nil, charm.CharmOrigin{}, interrors.Capture(err)
 	}
 
 	return internalcharm.NewCharmBase(
@@ -280,17 +278,17 @@ func (s *CharmService) GetCharm(ctx context.Context, id corecharm.ID) (internalc
 // returned.
 func (s *CharmService) GetCharmMetadata(ctx context.Context, id corecharm.ID) (internalcharm.Meta, error) {
 	if err := id.Validate(); err != nil {
-		return internalcharm.Meta{}, fmt.Errorf("charm id: %w", err)
+		return internalcharm.Meta{}, interrors.Errorf("charm id: %w", err)
 	}
 
 	metadata, err := s.st.GetCharmMetadata(ctx, id)
 	if err != nil {
-		return internalcharm.Meta{}, errors.Trace(err)
+		return internalcharm.Meta{}, interrors.Capture(err)
 	}
 
 	decoded, err := decodeMetadata(metadata)
 	if err != nil {
-		return internalcharm.Meta{}, errors.Trace(err)
+		return internalcharm.Meta{}, interrors.Capture(err)
 	}
 	return decoded, nil
 }
@@ -302,12 +300,12 @@ func (s *CharmService) GetCharmMetadata(ctx context.Context, id corecharm.ID) (i
 // returned.
 func (s *CharmService) GetCharmMetadataName(ctx context.Context, id corecharm.ID) (string, error) {
 	if err := id.Validate(); err != nil {
-		return "", fmt.Errorf("charm id: %w", err)
+		return "", interrors.Errorf("charm id: %w", err)
 	}
 
 	name, err := s.st.GetCharmMetadataName(ctx, id)
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 	return name, nil
 }
@@ -319,12 +317,12 @@ func (s *CharmService) GetCharmMetadataName(ctx context.Context, id corecharm.ID
 // returned.
 func (s *CharmService) GetCharmMetadataDescription(ctx context.Context, id corecharm.ID) (string, error) {
 	if err := id.Validate(); err != nil {
-		return "", fmt.Errorf("charm id: %w", err)
+		return "", interrors.Errorf("charm id: %w", err)
 	}
 
 	description, err := s.st.GetCharmMetadataDescription(ctx, id)
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 	return description, nil
 }
@@ -335,17 +333,17 @@ func (s *CharmService) GetCharmMetadataDescription(ctx context.Context, id corec
 // returned.
 func (s *CharmService) GetCharmManifest(ctx context.Context, id corecharm.ID) (internalcharm.Manifest, error) {
 	if err := id.Validate(); err != nil {
-		return internalcharm.Manifest{}, fmt.Errorf("charm id: %w", err)
+		return internalcharm.Manifest{}, interrors.Errorf("charm id: %w", err)
 	}
 
 	manifest, err := s.st.GetCharmManifest(ctx, id)
 	if err != nil {
-		return internalcharm.Manifest{}, errors.Trace(err)
+		return internalcharm.Manifest{}, interrors.Capture(err)
 	}
 
 	decoded, err := decodeManifest(manifest)
 	if err != nil {
-		return internalcharm.Manifest{}, errors.Trace(err)
+		return internalcharm.Manifest{}, interrors.Capture(err)
 	}
 	return decoded, nil
 }
@@ -356,17 +354,17 @@ func (s *CharmService) GetCharmManifest(ctx context.Context, id corecharm.ID) (i
 // returned.
 func (s *CharmService) GetCharmActions(ctx context.Context, id corecharm.ID) (internalcharm.Actions, error) {
 	if err := id.Validate(); err != nil {
-		return internalcharm.Actions{}, fmt.Errorf("charm id: %w", err)
+		return internalcharm.Actions{}, interrors.Errorf("charm id: %w", err)
 	}
 
 	actions, err := s.st.GetCharmActions(ctx, id)
 	if err != nil {
-		return internalcharm.Actions{}, errors.Trace(err)
+		return internalcharm.Actions{}, interrors.Capture(err)
 	}
 
 	decoded, err := decodeActions(actions)
 	if err != nil {
-		return internalcharm.Actions{}, errors.Trace(err)
+		return internalcharm.Actions{}, interrors.Capture(err)
 	}
 	return decoded, nil
 }
@@ -377,17 +375,17 @@ func (s *CharmService) GetCharmActions(ctx context.Context, id corecharm.ID) (in
 // returned.
 func (s *CharmService) GetCharmConfig(ctx context.Context, id corecharm.ID) (internalcharm.Config, error) {
 	if err := id.Validate(); err != nil {
-		return internalcharm.Config{}, fmt.Errorf("charm id: %w", err)
+		return internalcharm.Config{}, interrors.Errorf("charm id: %w", err)
 	}
 
 	config, err := s.st.GetCharmConfig(ctx, id)
 	if err != nil {
-		return internalcharm.Config{}, errors.Trace(err)
+		return internalcharm.Config{}, interrors.Capture(err)
 	}
 
 	decoded, err := decodeConfig(config)
 	if err != nil {
-		return internalcharm.Config{}, errors.Trace(err)
+		return internalcharm.Config{}, interrors.Capture(err)
 	}
 	return decoded, nil
 }
@@ -399,17 +397,17 @@ func (s *CharmService) GetCharmConfig(ctx context.Context, id corecharm.ID) (int
 // returned.
 func (s *CharmService) GetCharmLXDProfile(ctx context.Context, id corecharm.ID) (internalcharm.LXDProfile, charm.Revision, error) {
 	if err := id.Validate(); err != nil {
-		return internalcharm.LXDProfile{}, -1, fmt.Errorf("charm id: %w", err)
+		return internalcharm.LXDProfile{}, -1, interrors.Errorf("charm id: %w", err)
 	}
 
 	profile, revision, err := s.st.GetCharmLXDProfile(ctx, id)
 	if err != nil {
-		return internalcharm.LXDProfile{}, -1, errors.Trace(err)
+		return internalcharm.LXDProfile{}, -1, interrors.Capture(err)
 	}
 
 	decoded, err := decodeLXDProfile(profile)
 	if err != nil {
-		return internalcharm.LXDProfile{}, -1, errors.Trace(err)
+		return internalcharm.LXDProfile{}, -1, interrors.Capture(err)
 	}
 	return decoded, revision, nil
 }
@@ -421,12 +419,12 @@ func (s *CharmService) GetCharmLXDProfile(ctx context.Context, id corecharm.ID) 
 // returned.
 func (s *CharmService) GetCharmArchivePath(ctx context.Context, id corecharm.ID) (string, error) {
 	if err := id.Validate(); err != nil {
-		return "", fmt.Errorf("charm id: %w", err)
+		return "", interrors.Errorf("charm id: %w", err)
 	}
 
 	path, err := s.st.GetCharmArchivePath(ctx, id)
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 	return path, nil
 }
@@ -439,11 +437,11 @@ func (s *CharmService) GetCharmArchivePath(ctx context.Context, id corecharm.ID)
 // returned.
 func (s *CharmService) IsCharmAvailable(ctx context.Context, id corecharm.ID) (bool, error) {
 	if err := id.Validate(); err != nil {
-		return false, fmt.Errorf("charm id: %w", err)
+		return false, interrors.Errorf("charm id: %w", err)
 	}
 	b, err := s.st.IsCharmAvailable(ctx, id)
 	if err != nil {
-		return false, errors.Trace(err)
+		return false, interrors.Capture(err)
 	}
 	return b, nil
 }
@@ -454,10 +452,10 @@ func (s *CharmService) IsCharmAvailable(ctx context.Context, id corecharm.ID) (b
 // returned.
 func (s *CharmService) SetCharmAvailable(ctx context.Context, id corecharm.ID) error {
 	if err := id.Validate(); err != nil {
-		return fmt.Errorf("charm id: %w", err)
+		return interrors.Errorf("charm id: %w", err)
 	}
 
-	return errors.Trace(s.st.SetCharmAvailable(ctx, id))
+	return interrors.Capture(s.st.SetCharmAvailable(ctx, id))
 }
 
 // ReserveCharmRevision defines a placeholder for a new charm revision. The
@@ -471,7 +469,7 @@ func (s *CharmService) SetCharmAvailable(ctx context.Context, id corecharm.ID) e
 // returned.
 func (s *CharmService) ReserveCharmRevision(ctx context.Context, id corecharm.ID, revision int) (corecharm.ID, error) {
 	if err := id.Validate(); err != nil {
-		return "", fmt.Errorf("charm id: %w", err)
+		return "", interrors.Errorf("charm id: %w", err)
 	}
 	if revision < 0 {
 		return "", applicationerrors.CharmRevisionNotValid
@@ -479,7 +477,7 @@ func (s *CharmService) ReserveCharmRevision(ctx context.Context, id corecharm.ID
 
 	newID, err := s.st.ReserveCharmRevision(ctx, id, revision)
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 	return newID, nil
 }
@@ -498,12 +496,12 @@ func (s *CharmService) SetCharm(ctx context.Context, args charm.SetCharmArgs) (c
 
 	source, err := encodeCharmSource(args.Source)
 	if err != nil {
-		return "", nil, fmt.Errorf("encode charm source: %w", err)
+		return "", nil, interrors.Errorf("encode charm source: %w", err)
 	}
 
 	ch, warnings, err := encodeCharm(args.Charm)
 	if err != nil {
-		return "", warnings, fmt.Errorf("encode charm: %w", err)
+		return "", warnings, interrors.Errorf("encode charm: %w", err)
 	}
 
 	charmID, err := s.st.SetCharm(ctx, ch, charm.SetStateArgs{
@@ -515,7 +513,7 @@ func (s *CharmService) SetCharm(ctx context.Context, args charm.SetCharmArgs) (c
 		Version:       args.Version,
 	})
 	if err != nil {
-		return "", warnings, errors.Trace(err)
+		return "", warnings, interrors.Capture(err)
 	}
 
 	return charmID, warnings, nil
@@ -573,29 +571,29 @@ func encodeCharm(ch internalcharm.Charm) (charm.Charm, []string, error) {
 
 	metadata, err := encodeMetadata(ch.Meta())
 	if err != nil {
-		return charm.Charm{}, nil, fmt.Errorf("encode metadata: %w", err)
+		return charm.Charm{}, nil, interrors.Errorf("encode metadata: %w", err)
 	}
 
 	manifest, warnings, err := encodeManifest(ch.Manifest())
 	if err != nil {
-		return charm.Charm{}, warnings, fmt.Errorf("encode manifest: %w", err)
+		return charm.Charm{}, warnings, interrors.Errorf("encode manifest: %w", err)
 	}
 
 	actions, err := encodeActions(ch.Actions())
 	if err != nil {
-		return charm.Charm{}, warnings, fmt.Errorf("encode actions: %w", err)
+		return charm.Charm{}, warnings, interrors.Errorf("encode actions: %w", err)
 	}
 
 	config, err := encodeConfig(ch.Config())
 	if err != nil {
-		return charm.Charm{}, warnings, fmt.Errorf("encode config: %w", err)
+		return charm.Charm{}, warnings, interrors.Errorf("encode config: %w", err)
 	}
 
 	var profile []byte
 	if lxdProfile, ok := ch.(internalcharm.LXDProfiler); ok && lxdProfile != nil {
 		profile, err = encodeLXDProfile(lxdProfile.LXDProfile())
 		if err != nil {
-			return charm.Charm{}, warnings, fmt.Errorf("encode lxd profile: %w", err)
+			return charm.Charm{}, warnings, interrors.Errorf("encode lxd profile: %w", err)
 		}
 	}
 
@@ -615,7 +613,7 @@ func encodeCharmSource(source internalcharm.Schema) (charm.CharmSource, error) {
 	case internalcharm.CharmHub:
 		return charm.CharmHubSource, nil
 	default:
-		return "", fmt.Errorf("%w: %v", applicationerrors.CharmSourceNotValid, source)
+		return "", interrors.Errorf("%w: %v", applicationerrors.CharmSourceNotValid, source)
 	}
 }
 

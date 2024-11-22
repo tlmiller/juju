@@ -5,7 +5,6 @@ package domain
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/juju/testing"
@@ -14,6 +13,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 type leaseServiceSuite struct {
@@ -65,7 +65,7 @@ func (s *leaseServiceSuite) TestWithLeaseWaitReturnsError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	s.leaseCheckerWaiter.EXPECT().WaitUntilExpired(gomock.Any(), "leaseName", gomock.Any()).DoAndReturn(func(ctx context.Context, leaseName string, start chan<- struct{}) error {
-		return fmt.Errorf("not holding lease")
+		return interrors.Errorf("not holding lease")
 	})
 
 	service := NewLeaseService(s.modelLeaseManager)
@@ -98,7 +98,7 @@ func (s *leaseServiceSuite) TestWithLeaseWaitHasLeaseChange(c *gc.C) {
 
 		close(done)
 
-		return fmt.Errorf("not holding lease")
+		return interrors.Errorf("not holding lease")
 	})
 
 	// Check we correctly hold the lease.

@@ -5,7 +5,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/juju/version/v2"
 
@@ -16,6 +15,7 @@ import (
 	applicationerrors "github.com/juju/juju/domain/application/errors"
 	machineerrors "github.com/juju/juju/domain/machine/errors"
 	"github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 type ModelState interface {
@@ -197,10 +197,10 @@ func (s *ModelService) WatchMachineTargetAgentVersion(
 
 	w, err := s.WatchModelTargetAgentVersion(ctx)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, interrors.Errorf(
 			"getting watcher for machine %q model target agent version: %w",
-			machineName, err,
-		)
+			machineName, err)
+
 	}
 	return w, nil
 }
@@ -254,10 +254,10 @@ func (s *ModelService) WatchUnitTargetAgentVersion(
 
 	w, err := s.WatchModelTargetAgentVersion(ctx)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, interrors.Errorf(
 			"getting watcher for unit %q model target agent version: %w",
-			unitName, err,
-		)
+			unitName, err)
+
 	}
 	return w, nil
 }

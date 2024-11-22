@@ -6,12 +6,12 @@ package state
 import (
 	"context"
 
-	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
 	coremachine "github.com/juju/juju/core/machine"
 	machineerrors "github.com/juju/juju/domain/machine/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 func (s *stateSuite) TestIsMachineRebootRequiredNoMachine(c *gc.C) {
@@ -227,5 +227,5 @@ func (s *stateSuite) TestRebootLogicGrandParentNotSupported(c *gc.C) {
 	_, err = s.state.ShouldRebootOrShutdown(context.Background(), "machine")
 
 	// Verify: grand parent are not supported
-	c.Assert(errors.Is(err, machineerrors.GrandParentNotSupported), gc.Equals, true, gc.Commentf("obtained error: %v", err))
+	c.Assert(interrors.Is(err, machineerrors.GrandParentNotSupported), gc.Equals, true, gc.Commentf("obtained error: %v", err))
 }

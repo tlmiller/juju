@@ -5,14 +5,13 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/juju/clock"
-	"github.com/juju/errors"
 	"github.com/juju/names/v5"
 
 	coreapplication "github.com/juju/juju/core/application"
+	coreerrors "github.com/juju/juju/core/errors"
 	"github.com/juju/juju/core/leadership"
 	"github.com/juju/juju/core/logger"
 	coremodel "github.com/juju/juju/core/model"
@@ -22,6 +21,7 @@ import (
 	domainsecret "github.com/juju/juju/domain/secret"
 	secreterrors "github.com/juju/juju/domain/secret/errors"
 	backenderrors "github.com/juju/juju/domain/secretbackend/errors"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/secrets/provider"
 	"github.com/juju/juju/internal/secrets/provider/kubernetes"
 	"github.com/juju/juju/internal/uuid"
@@ -56,13 +56,13 @@ type BackendUserSecretConfigGetter func(context.Context, GrantedSecretsGetter, S
 // NotImplementedBackendConfigGetter is a not implemented secret backend getter.
 // It is used by callers of the secret service that do not need any backend functionality.
 var NotImplementedBackendConfigGetter = func(context.Context) (*provider.ModelBackendConfigInfo, error) {
-	return nil, errors.NotImplemented
+	return nil, coreerrors.NotImplemented
 }
 
 // NotImplementedBackendUserSecretConfigGetter is a not implemented secret backend getter.
 // It is used by callers of the secret service that do not need any backend functionality.
 var NotImplementedBackendUserSecretConfigGetter = func(context.Context, GrantedSecretsGetter, SecretAccessor) (*provider.ModelBackendConfigInfo, error) {
-	return nil, errors.NotImplemented
+	return nil, coreerrors.NotImplemented
 }
 
 // NoopImplementedBackendReferenceMutator is a reference mutator which does nothing.
@@ -103,12 +103,12 @@ func (s *SecretService) WithBackendRefMutator(mutator SecretBackendReferenceMuta
 // CreateSecretURIs returns the specified number of new secret URIs.
 func (s *SecretService) CreateSecretURIs(ctx context.Context, count int) ([]*secrets.URI, error) {
 	if count <= 0 {
-		return nil, errors.NotValidf("secret URi count %d", count)
+		return nil, errors.Errorf("secret URi count %d %w", count, coreerrors.NotValid)
 	}
 
 	modelUUID, err := s.secretState.GetModelUUID(ctx)
 	if err != nil {
-		return nil, errors.Annotate(err, "getting model uuid")
+		return nil, errors.Errorf("getting model uuid %w", err)
 	}
 	result := make([]*secrets.URI, count)
 	for i := 0; i < count; i++ {
@@ -120,7 +120,7 @@ func (s *SecretService) CreateSecretURIs(ctx context.Context, count int) ([]*sec
 func (s *SecretService) getBackend(cfg *provider.ModelBackendConfig) (provider.SecretsBackend, error) {
 	p, err := s.providerGetter(cfg.BackendType)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.Capture(err)
 	}
 	return p.NewBackend(cfg)
 }
@@ -128,16 +128,16 @@ func (s *SecretService) getBackend(cfg *provider.ModelBackendConfig) (provider.S
 func (s *SecretService) getBackendForUserSecrets(ctx context.Context, accessor SecretAccessor) (provider.SecretsBackend, string, error) {
 	info, err := s.userSecretConfigGetter(ctx, s.ListGrantedSecretsForBackend, accessor)
 	if err != nil {
-		return nil, "", errors.Trace(err)
+		return nil, "", errors.Capture(err)
 	}
 	activeBackendID := info.ActiveID
 	cfg, ok := info.Configs[activeBackendID]
 	if !ok {
-		return nil, "", fmt.Errorf("active backend config for %q: %w", activeBackendID, backenderrors.NotFound)
+		return nil, "", errors.Errorf("active backend config for %q: %w", activeBackendID, backenderrors.NotFound)
 	}
 	backend, err := s.getBackend(&cfg)
 	if err != nil {
-		return nil, "", errors.Trace(err)
+		return nil, "", errors.Capture(err)
 	}
 	return backend, activeBackendID, nil
 }
@@ -146,7 +146,7 @@ func (s *SecretService) loadBackendInfo(ctx context.Context, activeOnly bool) er
 	s.backends = make(map[string]provider.SecretsBackend)
 	info, err := s.adminConfigGetter(ctx)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	s.activeBackendID = info.ActiveID
 	for id, cfg := range info.Configs {
@@ -161,7 +161,7 @@ func (s *SecretService) loadBackendInfo(ctx context.Context, activeOnly bool) er
 				s.logger.Debugf("failed to load backend info for id %s (%s): %v", id, cfg.BackendType, err)
 				continue
 			}
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 	}
 	if activeOnly && len(s.backends) == 0 {
@@ -176,7 +176,7 @@ func (s *SecretService) loadBackendInfo(ctx context.Context, activeOnly bool) er
 // a secret with the same label.
 func (s *SecretService) CreateUserSecret(ctx context.Context, uri *secrets.URI, params CreateUserSecretParams) (errOut error) {
 	if len(params.Data) == 0 {
-		return errors.NotValidf("empty secret value")
+		return errors.Errorf("empty secret value %w", coreerrors.NotValid)
 	}
 
 	p := domainsecret.UpsertSecretParams{
@@ -194,12 +194,12 @@ func (s *SecretService) CreateUserSecret(ctx context.Context, uri *secrets.URI, 
 
 	backend, backendID, err := s.getBackendForUserSecrets(ctx, params.Accessor)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	revId, err := backend.SaveContent(ctx, uri, 1, secrets.NewSecretValue(params.Data))
-	if err != nil && !errors.Is(err, errors.NotSupported) {
-		return errors.Annotatef(err, "saving secret content to backend")
+	if err != nil && !errors.Is(err, coreerrors.NotSupported) {
+		return errors.Errorf("saving secret content to backend %w", err)
 	}
 	if err == nil {
 		defer func() {
@@ -207,7 +207,7 @@ func (s *SecretService) CreateUserSecret(ctx context.Context, uri *secrets.URI, 
 				// If we failed to create the secret, we should delete the
 				// secret value from the backend.
 				if err2 := backend.DeleteContent(ctx, revId); err2 != nil &&
-					!errors.Is(err2, errors.NotSupported) &&
+					!errors.Is(err2, coreerrors.NotSupported) &&
 					!errors.Is(err2, secreterrors.SecretRevisionNotFound) {
 					s.logger.Warningf("failed to delete secret %q: %v", revId, err2)
 				}
@@ -221,17 +221,17 @@ func (s *SecretService) CreateUserSecret(ctx context.Context, uri *secrets.URI, 
 	}
 	revisionID, err := s.uuidGenerator()
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	p.RevisionID = ptr(revisionID.String())
 
 	modelID, err := s.secretState.GetModelUUID(ctx)
 	if err != nil {
-		return errors.Annotate(err, "getting model uuid")
+		return errors.Errorf("getting model uuid %w", err)
 	}
 	rollBack, err := s.secretBackendReferenceMutator.AddSecretBackendReference(ctx, p.ValueRef, coremodel.UUID(modelID), revisionID.String())
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	defer func() {
 		if errOut != nil {
@@ -244,7 +244,7 @@ func (s *SecretService) CreateUserSecret(ctx context.Context, uri *secrets.URI, 
 	if err = s.secretState.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		return s.createSecret(ctx, params.Version, uri, secrets.Owner{Kind: secrets.ModelOwner}, p)
 	}); err != nil {
-		return errors.Annotatef(err, "cannot create user secret %q", uri.ID)
+		return errors.Errorf("cannot create user secret %q %w", uri.ID, err)
 	}
 	return nil
 }
@@ -283,17 +283,17 @@ func (s *SecretService) CreateCharmSecret(ctx context.Context, uri *secrets.URI,
 
 	revisionID, err := s.uuidGenerator()
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	p.RevisionID = ptr(revisionID.String())
 
 	modelID, err := s.secretState.GetModelUUID(ctx)
 	if err != nil {
-		return errors.Annotate(err, "getting model uuid")
+		return errors.Errorf("getting model uuid %w", err)
 	}
 	rollBack, err := s.secretBackendReferenceMutator.AddSecretBackendReference(ctx, p.ValueRef, coremodel.UUID(modelID), revisionID.String())
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	defer func() {
 		if errOut != nil {
@@ -311,7 +311,7 @@ func (s *SecretService) CreateCharmSecret(ctx context.Context, uri *secrets.URI,
 			if leadership.IsNotLeaderError(err) {
 				return secreterrors.PermissionDenied
 			}
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 	}
 
@@ -323,7 +323,7 @@ func (s *SecretService) CreateCharmSecret(ctx context.Context, uri *secrets.URI,
 		return s.createSecret(ctx, params.Version, uri, owner, p)
 	})
 	if err != nil {
-		return errors.Annotatef(err, "cannot create charm secret %q", uri.ID)
+		return errors.Errorf("cannot create charm secret %q %w", uri.ID, err)
 	}
 	return nil
 }
@@ -335,7 +335,7 @@ func (s *SecretService) CreateCharmSecret(ctx context.Context, uri *secrets.URI,
 // It returns [secreterrors.PermissionDenied] if the secret cannot be managed by the accessor.
 func (s *SecretService) UpdateUserSecret(ctx context.Context, uri *secrets.URI, params UpdateUserSecretParams) (errOut error) {
 	if err := s.canManage(ctx, uri, params.Accessor, nil); err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	p := domainsecret.UpsertSecretParams{
@@ -354,17 +354,17 @@ func (s *SecretService) UpdateUserSecret(ctx context.Context, uri *secrets.URI, 
 
 		backend, backendID, err := s.getBackendForUserSecrets(ctx, params.Accessor)
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 
 		latestRevision, err := s.secretState.GetLatestRevision(ctx, uri)
 		if err != nil {
 			// Check if the uri exists or not.
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		revId, err := backend.SaveContent(ctx, uri, latestRevision+1, secrets.NewSecretValue(params.Data))
-		if err != nil && !errors.Is(err, errors.NotSupported) {
-			return errors.Annotatef(err, "saving secret content to backend")
+		if err != nil && !errors.Is(err, coreerrors.NotSupported) {
+			return errors.Errorf("saving secret content to backend %w", err)
 		}
 		if err == nil {
 			defer func() {
@@ -372,7 +372,7 @@ func (s *SecretService) UpdateUserSecret(ctx context.Context, uri *secrets.URI, 
 					// If we failed to update the secret, we should delete the
 					// secret value from the backend for the new revision.
 					if err2 := backend.DeleteContent(ctx, revId); err2 != nil &&
-						!errors.Is(err2, errors.NotSupported) &&
+						!errors.Is(err2, coreerrors.NotSupported) &&
 						!errors.Is(err2, secreterrors.SecretRevisionNotFound) {
 						s.logger.Warningf("failed to delete secret %q: %v", revId, err2)
 					}
@@ -389,17 +389,17 @@ func (s *SecretService) UpdateUserSecret(ctx context.Context, uri *secrets.URI, 
 	if p.ValueRef != nil || len(p.Data) != 0 {
 		revisionID, err := s.uuidGenerator()
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		p.RevisionID = ptr(revisionID.String())
 
 		modelID, err := s.secretState.GetModelUUID(ctx)
 		if err != nil {
-			return errors.Annotate(err, "getting model uuid")
+			return errors.Errorf("getting model uuid %w", err)
 		}
 		rollBack, err := s.secretBackendReferenceMutator.AddSecretBackendReference(ctx, p.ValueRef, coremodel.UUID(modelID), revisionID.String())
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		defer func() {
 			if errOut != nil {
@@ -414,7 +414,7 @@ func (s *SecretService) UpdateUserSecret(ctx context.Context, uri *secrets.URI, 
 		return s.updateSecret(ctx, uri, p)
 	})
 	if err != nil {
-		return errors.Annotatef(err, "cannot update user secret %q", uri.ID)
+		return errors.Errorf("cannot update user secret %q %w", uri.ID, err)
 	}
 	return nil
 }
@@ -430,7 +430,7 @@ func (s *SecretService) UpdateCharmSecret(ctx context.Context, uri *secrets.URI,
 	}
 
 	if err := s.canManage(ctx, uri, params.Accessor, params.LeaderToken); err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	p := domainsecret.UpsertSecretParams{
@@ -445,7 +445,7 @@ func (s *SecretService) UpdateCharmSecret(ctx context.Context, uri *secrets.URI,
 	if params.RotatePolicy.WillRotate() {
 		policy, err := s.secretState.GetRotatePolicy(ctx, uri)
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		if !policy.WillRotate() {
 			p.NextRotateTime = params.RotatePolicy.NextRotateTime(s.clock.Now())
@@ -461,17 +461,17 @@ func (s *SecretService) UpdateCharmSecret(ctx context.Context, uri *secrets.URI,
 	if p.ValueRef != nil || len(p.Data) != 0 {
 		revisionID, err := s.uuidGenerator()
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		p.RevisionID = ptr(revisionID.String())
 
 		modelID, err := s.secretState.GetModelUUID(ctx)
 		if err != nil {
-			return errors.Annotate(err, "getting model uuid")
+			return errors.Errorf("getting model uuid %w", err)
 		}
 		rollBack, err := s.secretBackendReferenceMutator.AddSecretBackendReference(ctx, p.ValueRef, coremodel.UUID(modelID), revisionID.String())
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		defer func() {
 			if errOut != nil {
@@ -485,7 +485,7 @@ func (s *SecretService) UpdateCharmSecret(ctx context.Context, uri *secrets.URI,
 		return s.updateSecret(ctx, uri, p)
 	})
 	if err != nil {
-		return errors.Annotatef(err, "cannot update charm secret %q", uri.ID)
+		return errors.Errorf("cannot update charm secret %q %w", uri.ID, err)
 	}
 	return nil
 }
@@ -496,7 +496,7 @@ func (s *SecretService) createSecret(
 	defer func() {
 		if err != nil {
 			if errors.Is(err, secreterrors.SecretLabelAlreadyExists) {
-				err = fmt.Errorf("secret with label %q is already being used: %w", *params.Label, secreterrors.SecretLabelAlreadyExists)
+				err = errors.Errorf("secret with label %q is already being used: %w", *params.Label, secreterrors.SecretLabelAlreadyExists)
 			}
 		}
 	}()
@@ -510,7 +510,7 @@ func (s *SecretService) createSecret(
 	case secrets.ApplicationOwner:
 		appUUID, err := s.secretState.GetApplicationUUID(ctx, owner.ID)
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		if params.Label != nil && *params.Label != "" {
 			labelExists, labelErr = s.secretState.CheckApplicationSecretLabelExists(ctx, appUUID, *params.Label)
@@ -519,7 +519,7 @@ func (s *SecretService) createSecret(
 	case secrets.UnitOwner:
 		unitUUID, err := s.secretState.GetUnitUUID(ctx, owner.ID)
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		if params.Label != nil && *params.Label != "" {
 			labelExists, labelErr = s.secretState.CheckUnitSecretLabelExists(ctx, unitUUID, *params.Label)
@@ -536,12 +536,12 @@ func (s *SecretService) createSecret(
 	}
 
 	if labelErr != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	if labelExists {
-		return fmt.Errorf("secret with label %q is already being used: %w", *params.Label, secreterrors.SecretLabelAlreadyExists)
+		return errors.Errorf("secret with label %q is already being used: %w", *params.Label, secreterrors.SecretLabelAlreadyExists)
 	}
-	return errors.Trace(createSecret())
+	return errors.Capture(createSecret())
 }
 
 func (s *SecretService) updateSecret(ctx domain.AtomicContext, uri *secrets.URI, params domainsecret.UpsertSecretParams) error {
@@ -549,7 +549,7 @@ func (s *SecretService) updateSecret(ctx domain.AtomicContext, uri *secrets.URI,
 		// Check to be sure a duplicate label won't be used.
 		owner, err := s.secretState.GetSecretOwner(ctx, uri)
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		var labelExists bool
 		switch kind := owner.Kind; kind {
@@ -564,14 +564,14 @@ func (s *SecretService) updateSecret(ctx domain.AtomicContext, uri *secrets.URI,
 			return errors.Errorf("unexpected secret owner kind %q for secret %q", kind, uri.ID)
 		}
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Capture(err)
 		}
 		if labelExists {
-			return fmt.Errorf("secret with label %q is already being used: %w", *params.Label, secreterrors.SecretLabelAlreadyExists)
+			return errors.Errorf("secret with label %q is already being used: %w", *params.Label, secreterrors.SecretLabelAlreadyExists)
 		}
 	}
 	err := s.secretState.UpdateSecret(ctx, uri, params)
-	return errors.Trace(err)
+	return errors.Capture(err)
 }
 
 // GetSecretsForOwners returns the secrets owned by the specified apps and/or units.
@@ -644,10 +644,10 @@ func (s *SecretService) ListUserSecretsToDrain(ctx context.Context) ([]*secrets.
 // If returns [secreterrors.SecretRevisionNotFound] is there's no such secret revision.
 func (s *SecretService) GetSecretValue(ctx context.Context, uri *secrets.URI, rev int, accessor SecretAccessor) (secrets.SecretValue, *secrets.ValueRef, error) {
 	if err := s.canRead(ctx, uri, accessor); err != nil {
-		return nil, nil, errors.Trace(err)
+		return nil, nil, errors.Capture(err)
 	}
 	data, ref, err := s.secretState.GetSecretValue(ctx, uri, rev)
-	return secrets.NewSecretValue(data), ref, errors.Trace(err)
+	return secrets.NewSecretValue(data), ref, errors.Capture(err)
 }
 
 // GetSecretContentFromBackend retrieves the content for the specified secret revision.
@@ -657,7 +657,7 @@ func (s *SecretService) GetSecretContentFromBackend(ctx context.Context, uri *se
 	if s.activeBackendID == "" {
 		err := s.loadBackendInfo(ctx, false)
 		if err != nil {
-			return nil, errors.Trace(err)
+			return nil, errors.Capture(err)
 		}
 	}
 	lastBackendID := ""
@@ -667,9 +667,9 @@ func (s *SecretService) GetSecretContentFromBackend(ctx context.Context, uri *se
 		if err != nil {
 			notFound := errors.Is(err, secreterrors.SecretNotFound) || errors.Is(err, secreterrors.SecretRevisionNotFound)
 			if notFound {
-				return nil, fmt.Errorf("secret %s revision %d not found%w", uri.ID, rev, errors.Hide(secreterrors.SecretRevisionNotFound))
+				return nil, errors.Errorf("secret %s revision %d not found%w", uri.ID, rev).Add(secreterrors.SecretRevisionNotFound)
 			}
-			return nil, errors.Trace(err)
+			return nil, errors.Capture(err)
 		}
 		if ref == nil {
 			return val, nil
@@ -678,15 +678,15 @@ func (s *SecretService) GetSecretContentFromBackend(ctx context.Context, uri *se
 		backendID := ref.BackendID
 		backend, ok := s.backends[backendID]
 		if !ok {
-			return nil, fmt.Errorf("external secret backend %q not found, have %q%w", backendID, s.backends, errors.Hide(backenderrors.NotFound))
+			return nil, errors.Errorf("external secret backend %q not found, have %q%w", backendID, s.backends).Add(backenderrors.NotFound)
 		}
 		val, err = backend.GetContent(ctx, ref.RevisionID)
 		notFound := errors.Is(err, secreterrors.SecretNotFound) || errors.Is(err, secreterrors.SecretRevisionNotFound)
 		if err == nil || !notFound || lastBackendID == backendID {
 			if notFound {
-				return nil, fmt.Errorf("secret %s revision %d not found%w", uri.ID, rev, errors.Hide(secreterrors.SecretRevisionNotFound))
+				return nil, errors.Errorf("secret %s revision %d not found%w", uri.ID, rev).Add(secreterrors.SecretRevisionNotFound)
 			}
-			return val, errors.Trace(err)
+			return val, errors.Capture(err)
 		}
 		lastBackendID = backendID
 		// Secret may have been drained to the active backend.
@@ -695,10 +695,10 @@ func (s *SecretService) GetSecretContentFromBackend(ctx context.Context, uri *se
 		}
 		// The active backend may have changed.
 		if initErr := s.loadBackendInfo(ctx, false); initErr != nil {
-			return nil, errors.Trace(initErr)
+			return nil, errors.Capture(initErr)
 		}
 		if s.activeBackendID == backendID {
-			return nil, errors.Trace(err)
+			return nil, errors.Capture(err)
 		}
 	}
 }
@@ -711,7 +711,7 @@ func (s *SecretService) ProcessCharmSecretConsumerLabel(
 ) (_ *secrets.URI, _ *string, err error) {
 	modelUUID, err := s.secretState.GetModelUUID(ctx)
 	if err != nil {
-		return nil, nil, errors.Annotate(err, "getting model uuid")
+		return nil, nil, errors.Errorf("getting model uuid %w", err)
 	}
 
 	// label could be the consumer label for consumers or the owner label for owners.
@@ -724,7 +724,7 @@ func (s *SecretService) ProcessCharmSecretConsumerLabel(
 	if uri == nil || uri.IsLocal(modelUUID) {
 		md, err := s.getAppOwnedOrUnitOwnedSecretMetadata(ctx, uri, unitName, label)
 		if err != nil && !errors.Is(err, secreterrors.SecretNotFound) {
-			return nil, nil, errors.Trace(err)
+			return nil, nil, errors.Capture(err)
 		}
 		if md != nil {
 			// If the label has is to be changed by the secret owner, update the secret metadata.
@@ -732,7 +732,7 @@ func (s *SecretService) ProcessCharmSecretConsumerLabel(
 			if labelToUpdate != nil && *labelToUpdate != md.Label {
 				isOwner, err := checkUnitOwner(unitName, md.Owner, token)
 				if err != nil {
-					return nil, nil, errors.Trace(err)
+					return nil, nil, errors.Capture(err)
 				}
 				if isOwner {
 					// TODO(secrets) - this should be updated when the consumed revision is looked up
@@ -749,7 +749,7 @@ func (s *SecretService) ProcessCharmSecretConsumerLabel(
 						},
 					})
 					if err != nil {
-						return nil, nil, errors.Trace(err)
+						return nil, nil, errors.Capture(err)
 					}
 				}
 			}
@@ -769,10 +769,10 @@ func (s *SecretService) ProcessCharmSecretConsumerLabel(
 		var err error
 		uri, err = s.GetURIByConsumerLabel(ctx, label, unitName)
 		if errors.Is(err, secreterrors.SecretNotFound) {
-			return nil, nil, errors.NotFoundf("secret URI for consumer label %q", label)
+			return nil, nil, errors.Errorf("secret URI for consumer label %q %w", label, coreerrors.NotFound)
 		}
 		if err != nil {
-			return nil, nil, errors.Trace(err)
+			return nil, nil, errors.Capture(err)
 		}
 	}
 	return uri, labelToUpdate, nil
@@ -790,21 +790,21 @@ func checkUnitOwner(unitName string, owner secrets.Owner, token leadership.Token
 		if leadership.IsNotLeaderError(err) {
 			return false, nil
 		}
-		return false, errors.Trace(err)
+		return false, errors.Capture(err)
 	}
 	return true, nil
 }
 
 func (s *SecretService) getAppOwnedOrUnitOwnedSecretMetadata(ctx context.Context, uri *secrets.URI, unitName, label string) (*secrets.SecretMetadata, error) {
-	notFoundErr := fmt.Errorf("secret %q not found%w", uri, errors.Hide(secreterrors.SecretNotFound))
+	notFoundErr := errors.Errorf("secret %q not found%w", uri).Add(secreterrors.SecretNotFound)
 	if label != "" {
-		notFoundErr = fmt.Errorf("secret with label %q not found%w", label, errors.Hide(secreterrors.SecretNotFound))
+		notFoundErr = errors.Errorf("secret with label %q not found%w", label).Add(secreterrors.SecretNotFound)
 	}
 
 	appName, err := names.UnitApplication(unitName)
 	if err != nil {
 		// Should never happen.
-		return nil, errors.Trace(err)
+		return nil, errors.Capture(err)
 	}
 	owners := []CharmSecretOwner{{
 		Kind: ApplicationOwner,
@@ -815,7 +815,7 @@ func (s *SecretService) getAppOwnedOrUnitOwnedSecretMetadata(ctx context.Context
 	}}
 	metadata, _, err := s.ListCharmSecrets(ctx, owners...)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.Capture(err)
 	}
 
 	for _, md := range metadata {
@@ -834,24 +834,24 @@ func (s *SecretService) getAppOwnedOrUnitOwnedSecretMetadata(ctx context.Context
 // It returns [secreterrors.PermissionDenied] if the secret cannot be managed by the accessor.
 func (s *SecretService) ChangeSecretBackend(ctx context.Context, uri *secrets.URI, revision int, params ChangeSecretBackendParams) (errOut error) {
 	if err := s.canManage(ctx, uri, params.Accessor, params.LeaderToken); err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	revisionIDStr, err := s.secretState.GetSecretRevisionID(ctx, uri, revision)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	revisionID, err := uuid.UUIDFromString(revisionIDStr)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	modelID, err := s.secretState.GetModelUUID(ctx)
 	if err != nil {
-		return errors.Annotate(err, "getting model uuid")
+		return errors.Errorf("getting model uuid %w", err)
 	}
 	rollBack, err := s.secretBackendReferenceMutator.UpdateSecretBackendReference(ctx, params.ValueRef, coremodel.UUID(modelID), revisionID.String())
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	defer func() {
 		if errOut != nil {
@@ -863,7 +863,7 @@ func (s *SecretService) ChangeSecretBackend(ctx context.Context, uri *secrets.UR
 
 	err = s.secretState.ChangeSecretBackend(ctx, revisionID, params.ValueRef, params.Data)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	return nil
 }
@@ -871,12 +871,12 @@ func (s *SecretService) ChangeSecretBackend(ctx context.Context, uri *secrets.UR
 // SecretRotated rotates the secret with the specified URI.
 func (s *SecretService) SecretRotated(ctx context.Context, uri *secrets.URI, params SecretRotatedParams) error {
 	if err := s.canManage(ctx, uri, params.Accessor, params.LeaderToken); err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	info, err := s.secretState.GetRotationExpiryInfo(ctx, uri)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	if !info.RotatePolicy.WillRotate() {
 		s.logger.Debugf("secret %q was rotated but now is set to not rotate")

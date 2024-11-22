@@ -8,11 +8,12 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/juju/collections/transform"
-	"github.com/juju/errors"
 
+	coreerrors "github.com/juju/juju/core/errors"
 	coremodel "github.com/juju/juju/core/model"
 	storageerrors "github.com/juju/juju/domain/storage/errors"
 	"github.com/juju/juju/internal/charm"
+	"github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/storage"
 )
 
@@ -71,7 +72,7 @@ func (v storageDirectivesValidator) ValidateStorageDirectivesAgainstCharm(
 				count = arg.Count
 			}
 			if charmStorage.CountMin > 0 || count > 0 {
-				return errors.NotSupportedf("block storage on a container model")
+				return errors.Errorf("block storage on a container model %w", coreerrors.NotSupported)
 			}
 		}
 	}
@@ -89,7 +90,7 @@ func (v storageDirectivesValidator) ValidateStorageDirectivesAgainstCharm(
 			)
 		}
 		if err := v.validateCharmStorageCount(charmStorage, directive.Count); err != nil {
-			return errors.Annotatef(err, "charm %q store %q", charmMeta.Name, name)
+			return errors.Errorf("charm %q store %q %w", charmMeta.Name, name, err)
 		}
 		if charmStorage.MinimumSize > 0 && directive.Size < charmStorage.MinimumSize {
 			return errors.Errorf(
@@ -136,7 +137,7 @@ func (v storageDirectivesValidator) validateStoragePool(
 	}
 	providerType, aProvider, poolConfig, err := v.poolStorageProvider(ctx, poolName)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	// Ensure the storage provider supports the specified kind.
@@ -153,7 +154,7 @@ func (v storageDirectivesValidator) validateStoragePool(
 
 	if v.modelType == coremodel.CAAS {
 		if err := aProvider.ValidateForK8s(poolConfig); err != nil {
-			return errors.Annotatef(err, "invalid storage config")
+			return errors.Errorf("invalid storage config %w", err)
 		}
 	}
 	return nil
@@ -172,16 +173,16 @@ func (v storageDirectivesValidator) poolStorageProvider(
 		if err1 != nil {
 			// The name can't be resolved as a storage provider type,
 			// so return the original "pool not found" error.
-			return "", nil, nil, errors.Trace(err)
+			return "", nil, nil, errors.Capture(err)
 		}
 		return providerType, aProvider, nil, nil
 	} else if err != nil {
-		return "", nil, nil, errors.Trace(err)
+		return "", nil, nil, errors.Capture(err)
 	}
 	providerType := storage.ProviderType(pool.Provider)
 	aProvider, err := v.registry.StorageProvider(providerType)
 	if err != nil {
-		return "", nil, nil, errors.Trace(err)
+		return "", nil, nil, errors.Capture(err)
 	}
 	attrs := transform.Map(pool.Attrs, func(k, v string) (string, any) { return k, v })
 	return providerType, aProvider, attrs, nil

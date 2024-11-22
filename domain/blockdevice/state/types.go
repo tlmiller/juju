@@ -4,9 +4,8 @@
 package state
 
 import (
-	"github.com/juju/errors"
-
 	"github.com/juju/juju/core/blockdevice"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // These structs represent the persistent block device entity schema in the database.
@@ -47,7 +46,7 @@ type BlockDevices []BlockDevice
 func (rows BlockDevices) toBlockDevicesAndMachines(deviceLinks []DeviceLink, filesystemTypes []FilesystemType, machines []BlockDeviceMachine) ([]blockdevice.BlockDevice, []string, error) {
 	if n := len(rows); n != len(filesystemTypes) || n != len(deviceLinks) || (machines != nil && n != len(machines)) {
 		// Should never happen.
-		return nil, nil, errors.New("row length mismatch composing block device results")
+		return nil, nil, interrors.New("row length mismatch composing block device results")
 	}
 
 	var (

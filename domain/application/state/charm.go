@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/canonical/sqlair"
-	"github.com/juju/errors"
 
 	corecharm "github.com/juju/juju/core/charm"
 	"github.com/juju/juju/core/database"
@@ -16,6 +15,7 @@ import (
 	"github.com/juju/juju/domain/application/charm"
 	applicationerrors "github.com/juju/juju/domain/application/errors"
 	internalerrors "github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // hashKind is the type of hash to store.
@@ -71,7 +71,7 @@ AND charm_origin.revision = $charmReferenceNameRevision.revision;
 	var id corecharm.ID
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, stmt, args).Get(&ident); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("failed to get charm ID: %w", err)
@@ -109,7 +109,7 @@ WHERE uuid = $charmID.uuid;
 	var isController bool
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, stmt, ident).Get(&result); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("failed to get charm ID: %w", err)
@@ -147,7 +147,7 @@ WHERE uuid = $charmID.uuid;
 	var isSubordinate bool
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, stmt, ident).Get(&result); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("failed to get charm ID: %w", err)
@@ -186,7 +186,7 @@ WHERE uuid = $charmID.uuid;
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		var result []charmID
 		if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("failed to get charm ID: %w", err)
@@ -229,7 +229,7 @@ WHERE uuid = $charmID.uuid;
 	var isAvailable bool
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, stmt, ident).Get(&result); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("failed to get charm ID: %w", err)
@@ -277,7 +277,7 @@ WHERE uuid = $charmID.uuid;
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		var result charmID
 		if err := tx.Query(ctx, selectStmt, ident).Get(&result); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("failed to set charm available: %w", err)
@@ -343,7 +343,7 @@ WHERE uuid = $charmID.uuid;
 
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, selectStmt, ident).Get(&reserveCharmResult); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("failed to reserve charm revision: %w", err)
@@ -394,7 +394,7 @@ WHERE uuid = $charmID.uuid;
 
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, stmt, ident).Get(&archivePath); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("failed to get charm archive path: %w", err)
@@ -453,7 +453,7 @@ WHERE uuid = $charmID.uuid;`
 
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, stmt, ident).Get(&metadata); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("selecting charm metadata: %w", err)
@@ -490,7 +490,7 @@ WHERE uuid = $charmID.uuid;`
 
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, stmt, ident).Get(&metadata); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 			return internalerrors.Errorf("selecting charm metadata: %w", err)
@@ -692,7 +692,7 @@ FROM v_charm_list_name_origin;
 
 	var results []charmNameWithOrigin
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		if err := tx.Query(ctx, stmt).GetAll(&results); errors.Is(err, sqlair.ErrNoRows) {
+		if err := tx.Query(ctx, stmt).GetAll(&results); interrors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		} else if err != nil {
 			return internalerrors.Errorf("getting charms with origin: %w", err)
@@ -728,7 +728,7 @@ WHERE name IN ($nameSelector[:]);
 
 	var results []charmNameWithOrigin
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		if err := tx.Query(ctx, stmt, nameSelector(names)).GetAll(&results); errors.Is(err, sqlair.ErrNoRows) {
+		if err := tx.Query(ctx, stmt, nameSelector(names)).GetAll(&results); interrors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		} else if err != nil {
 			return internalerrors.Errorf("getting charms with origin: %w", err)
@@ -834,7 +834,7 @@ func (s *CharmState) DeleteCharm(ctx context.Context, id corecharm.ID) error {
 
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, selectQuery, charmID{UUID: id.String()}).Get(&charmID{}); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return applicationerrors.CharmNotFound
 			}
 		}

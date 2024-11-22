@@ -21,6 +21,7 @@ import (
 	"github.com/juju/juju/core/changestream"
 	corecharm "github.com/juju/juju/core/charm"
 	coredatabase "github.com/juju/juju/core/database"
+	coreerrors "github.com/juju/juju/core/errors"
 	"github.com/juju/juju/core/leadership"
 	corelife "github.com/juju/juju/core/life"
 	"github.com/juju/juju/core/logger"
@@ -44,6 +45,7 @@ import (
 	"github.com/juju/juju/environs"
 	internalcharm "github.com/juju/juju/internal/charm"
 	internalerrors "github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/storage"
 )
 
@@ -252,16 +254,16 @@ func (s *ApplicationService) CreateApplication(
 	units ...AddUnitArg,
 ) (coreapplication.ID, error) {
 	if err := s.validateCreateApplicationParams(name, args.ReferenceName, charm, origin); err != nil {
-		return "", errors.Annotatef(err, "invalid application args")
+		return "", interrors.Errorf("invalid application args %w", err)
 	}
 
 	modelType, err := s.st.GetModelType(ctx)
 	if err != nil {
-		return "", errors.Annotatef(err, "getting model type")
+		return "", interrors.Errorf("getting model type %w", err)
 	}
 	appArg, err := s.makeCreateApplicationArgs(ctx, modelType, charm, origin, args)
 	if err != nil {
-		return "", errors.Annotatef(err, "creating application args")
+		return "", interrors.Errorf("creating application args %w", err)
 	}
 	// We know that the charm name is valid, so we can use it as the application
 	// name if that is not provided.
@@ -287,7 +289,7 @@ func (s *ApplicationService) CreateApplication(
 	err = s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err = s.st.CreateApplication(ctx, name, appArg)
 		if err != nil {
-			return errors.Annotatef(err, "creating application %q", name)
+			return interrors.Errorf("creating application %q %w", name, err)
 		}
 		return s.st.AddUnits(ctx, appID, unitArgs...)
 	})
@@ -312,12 +314,12 @@ func (s *ApplicationService) validateCreateApplicationParams(
 	if !isValidCharmName(meta.Name) {
 		return applicationerrors.CharmNameNotValid
 	} else if !isValidReferenceName(referenceName) {
-		return fmt.Errorf("reference name: %w", applicationerrors.CharmNameNotValid)
+		return interrors.Errorf("reference name: %w", applicationerrors.CharmNameNotValid)
 	}
 
 	// Validate the origin of the charm.
 	if err := origin.Validate(); err != nil {
-		return fmt.Errorf("%w: %v", applicationerrors.CharmOriginNotValid, err)
+		return interrors.Errorf("%w: %v", applicationerrors.CharmOriginNotValid, err)
 	}
 	return nil
 }
@@ -338,22 +340,22 @@ func (s *ApplicationService) makeCreateApplicationArgs(
 		cons[n] = sc
 	}
 	if err := s.addDefaultStorageDirectives(ctx, modelType, cons, charm.Meta()); err != nil {
-		return application.AddApplicationArg{}, errors.Annotate(err, "adding default storage directives")
+		return application.AddApplicationArg{}, interrors.Errorf("adding default storage directives %w", err)
 	}
 	if err := s.validateStorageDirectives(ctx, modelType, cons, charm); err != nil {
-		return application.AddApplicationArg{}, errors.Annotate(err, "invalid storage directives")
+		return application.AddApplicationArg{}, interrors.Errorf("invalid storage directives %w", err)
 	}
 
 	// When encoding the charm, this will also validate the charm metadata,
 	// when parsing it.
 	ch, _, err := encodeCharm(charm)
 	if err != nil {
-		return application.AddApplicationArg{}, fmt.Errorf("encode charm: %w", err)
+		return application.AddApplicationArg{}, interrors.Errorf("encode charm: %w", err)
 	}
 
 	originArg, channelArg, platformArg, err := encodeCharmOrigin(origin, args.ReferenceName)
 	if err != nil {
-		return application.AddApplicationArg{}, fmt.Errorf("encode charm origin: %w", err)
+		return application.AddApplicationArg{}, interrors.Errorf("encode charm origin: %w", err)
 	}
 
 	return application.AddApplicationArg{
@@ -413,16 +415,16 @@ func (s *ApplicationService) ImportApplication(
 	units ...ImportUnitArg,
 ) error {
 	if err := s.validateCreateApplicationParams(appName, args.ReferenceName, charm, origin); err != nil {
-		return errors.Annotatef(err, "invalid application args")
+		return interrors.Errorf("invalid application args %w", err)
 	}
 
 	modelType, err := s.st.GetModelType(ctx)
 	if err != nil {
-		return errors.Annotatef(err, "getting model type")
+		return interrors.Errorf("getting model type %w", err)
 	}
 	appArg, err := s.makeCreateApplicationArgs(ctx, modelType, charm, origin, args)
 	if err != nil {
-		return errors.Annotatef(err, "creating application args")
+		return interrors.Errorf("creating application args %w", err)
 	}
 	appArg.Scale = len(units)
 
@@ -456,11 +458,11 @@ func (s *ApplicationService) ImportApplication(
 	err = s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.CreateApplication(ctx, appName, appArg)
 		if err != nil {
-			return errors.Annotatef(err, "creating application %q", appName)
+			return interrors.Errorf("creating application %q %w", appName, err)
 		}
 		for _, arg := range unitArgs {
 			if err := s.st.InsertUnit(ctx, appID, arg); err != nil {
-				return errors.Annotatef(err, "inserting unit %q", arg.UnitName)
+				return interrors.Errorf("inserting unit %q %w", arg.UnitName, err)
 			}
 		}
 		return nil
@@ -473,7 +475,7 @@ func (s *ApplicationService) ImportApplication(
 func (s *ApplicationService) AddUnits(ctx context.Context, name string, units ...AddUnitArg) error {
 	modelType, err := s.st.GetModelType(ctx)
 	if err != nil {
-		return errors.Annotatef(err, "getting model type")
+		return interrors.Errorf("getting model type %w", err)
 	}
 
 	args := make([]application.AddUnitArg, len(units))
@@ -488,11 +490,11 @@ func (s *ApplicationService) AddUnits(ctx context.Context, name string, units ..
 	err = s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.GetApplicationID(ctx, name)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		return s.st.AddUnits(ctx, appID, args...)
 	})
-	return errors.Annotatef(err, "adding units to application %q", name)
+	return interrors.Errorf("adding units to application %q %w", name, err)
 }
 
 // GetUnitUUIDs returns the UUIDs for the named units in bulk, returning an error
@@ -532,9 +534,9 @@ func (s *ApplicationService) GetUnitLife(ctx context.Context, unitName coreunit.
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		unitLife, err := s.st.GetUnitLife(ctx, unitName)
 		result = unitLife.Value()
-		return errors.Annotatef(err, "getting life for %q", unitName)
+		return interrors.Errorf("getting life for %q %w", unitName, err)
 	})
-	return result, errors.Trace(err)
+	return result, interrors.Capture(err)
 }
 
 // DeleteUnit deletes the specified unit.
@@ -547,7 +549,7 @@ func (s *ApplicationService) DeleteUnit(ctx context.Context, unitName coreunit.N
 		return s.deleteUnit(ctx, unitName)
 	})
 	if err != nil {
-		return errors.Annotatef(err, "deleting unit %q", unitName)
+		return interrors.Errorf("deleting unit %q %w", unitName, err)
 	}
 	return nil
 }
@@ -556,28 +558,28 @@ func (s *ApplicationService) deleteUnit(ctx domain.AtomicContext, unitName coreu
 	// Get unit owned secrets.
 	uris, err := s.st.GetSecretsForUnit(ctx, unitName)
 	if err != nil {
-		return errors.Annotatef(err, "getting unit owned secrets for %q", unitName)
+		return interrors.Errorf("getting unit owned secrets for %q %w", unitName, err)
 	}
 	// Delete unit owned secrets.
 	for _, uri := range uris {
 		s.logger.Debugf("deleting unit %q secret: %s", unitName, uri.ID)
 		err := s.secretDeleter.DeleteSecret(ctx, uri, nil)
 		if err != nil {
-			return errors.Annotatef(err, "deleting secret %q", uri)
+			return interrors.Errorf("deleting secret %q %w", uri, err)
 		}
 	}
 
 	err = s.ensureUnitDead(ctx, unitName)
-	if errors.Is(err, applicationerrors.UnitNotFound) {
+	if interrors.Is(err, applicationerrors.UnitNotFound) {
 		return nil
 	}
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	isLast, err := s.st.DeleteUnit(ctx, unitName)
 	if err != nil {
-		return errors.Annotatef(err, "deleting unit %q", unitName)
+		return interrors.Errorf("deleting unit %q %w", unitName, err)
 	}
 	if isLast {
 		// TODO(units): schedule application cleanup
@@ -594,7 +596,7 @@ func (s *ApplicationService) DestroyUnit(ctx context.Context, unitName coreunit.
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		return s.st.SetUnitLife(ctx, unitName, life.Dying)
 	})
-	return errors.Annotatef(err, "destroying unit %q", unitName)
+	return interrors.Errorf("destroying unit %q %w", unitName, err)
 }
 
 // EnsureUnitDead is called by the unit agent just before it terminates.
@@ -609,22 +611,22 @@ func (s *ApplicationService) EnsureUnitDead(ctx context.Context, unitName coreun
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		return s.ensureUnitDead(ctx, unitName)
 	})
-	if errors.Is(err, applicationerrors.UnitNotFound) {
+	if interrors.Is(err, applicationerrors.UnitNotFound) {
 		return nil
 	}
 	if err == nil {
 		appName, _ := names.UnitApplication(unitName.String())
-		if err := leadershipRevoker.RevokeLeadership(appName, unitName); err != nil && !errors.Is(err, leadership.ErrClaimNotHeld) {
+		if err := leadershipRevoker.RevokeLeadership(appName, unitName); err != nil && !interrors.Is(err, leadership.ErrClaimNotHeld) {
 			s.logger.Warningf("cannot revoke lease for dead unit %q", unitName)
 		}
 	}
-	return errors.Annotatef(err, "ensuring unit %q is dead", unitName)
+	return interrors.Errorf("ensuring unit %q is dead %w", unitName, err)
 }
 
 func (s *ApplicationService) ensureUnitDead(ctx domain.AtomicContext, unitName coreunit.Name) (err error) {
 	unitLife, err := s.st.GetUnitLife(ctx, unitName)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 	if unitLife == life.Dead {
 		return nil
@@ -634,7 +636,7 @@ func (s *ApplicationService) ensureUnitDead(ctx domain.AtomicContext, unitName c
 	// If a unit still has subordinates, return applicationerrors.UnitHasSubordinates.
 	// If a unit still has storage attachments, return applicationerrors.UnitHasStorageAttachments.
 	err = s.st.SetUnitLife(ctx, unitName, life.Dead)
-	return errors.Annotatef(err, "ensuring unit %q is dead", unitName)
+	return interrors.Errorf("ensuring unit %q is dead %w", unitName, err)
 }
 
 // RemoveUnit is called by the deployer worker and caas application provisioner worker to
@@ -649,19 +651,19 @@ func (s *ApplicationService) RemoveUnit(ctx context.Context, unitName coreunit.N
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		unitLife, err := s.st.GetUnitLife(ctx, unitName)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		if unitLife == life.Alive {
-			return fmt.Errorf("cannot remove unit %q: %w", unitName, applicationerrors.UnitIsAlive)
+			return interrors.Errorf("cannot remove unit %q: %w", unitName, applicationerrors.UnitIsAlive)
 		}
 		err = s.deleteUnit(ctx, unitName)
-		return errors.Annotatef(err, "deleting unit %q", unitName)
+		return interrors.Errorf("deleting unit %q %w", unitName, err)
 	})
 	if err != nil {
-		return errors.Annotatef(err, "removing unit %q", unitName)
+		return interrors.Errorf("removing unit %q %w", unitName, err)
 	}
 	appName, _ := names.UnitApplication(unitName.String())
-	if err := leadershipRevoker.RevokeLeadership(appName, unitName); err != nil && !errors.Is(err, leadership.ErrClaimNotHeld) {
+	if err := leadershipRevoker.RevokeLeadership(appName, unitName); err != nil && !interrors.Is(err, leadership.ErrClaimNotHeld) {
 		s.logger.Warningf("cannot revoke lease for dead unit %q", unitName)
 	}
 	return nil
@@ -705,16 +707,16 @@ func makeCloudContainerArg(unitName coreunit.Name, cloudContainer CloudContainer
 // satisfying [applicationerrors.UnitAlreadyExists] is returned.
 func (s *ApplicationService) RegisterCAASUnit(ctx context.Context, appName string, args RegisterCAASUnitParams) error {
 	if args.PasswordHash == "" {
-		return errors.NotValidf("password hash")
+		return interrors.Errorf("password hash %w", coreerrors.NotValid)
 	}
 	if args.ProviderId == "" {
-		return errors.NotValidf("provider id")
+		return interrors.Errorf("provider id %w", coreerrors.NotValid)
 	}
 	if !args.OrderedScale {
-		return errors.NewNotImplemented(nil, "registering CAAS units not supported without ordered unit IDs")
+		return interrors.Errorf("registering CAAS units not supported without ordered unit IDs %w", coreerrors.NotImplemented)
 	}
 	if args.UnitName == "" {
-		return errors.NotValidf("missing unit name")
+		return interrors.Errorf("missing unit name %w", coreerrors.NotValid)
 	}
 
 	cloudContainerParams := CloudContainerParams{
@@ -732,10 +734,10 @@ func (s *ApplicationService) RegisterCAASUnit(ctx context.Context, appName strin
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.GetApplicationID(ctx, appName)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		unitLife, err := s.st.GetUnitLife(ctx, args.UnitName)
-		if errors.Is(err, applicationerrors.UnitNotFound) {
+		if interrors.Is(err, applicationerrors.UnitNotFound) {
 			arg := application.InsertUnitArg{
 				UnitName: args.UnitName,
 				Password: &application.PasswordInfo{
@@ -748,23 +750,23 @@ func (s *ApplicationService) RegisterCAASUnit(ctx context.Context, appName strin
 			return s.insertCAASUnit(ctx, appID, args.OrderedId, arg)
 		}
 		if unitLife == life.Dead {
-			return fmt.Errorf("dead unit %q already exists%w", args.UnitName, errors.Hide(applicationerrors.UnitAlreadyExists))
+			return interrors.Errorf("dead unit %q already exists%w", args.UnitName, errors.Hide(applicationerrors.UnitAlreadyExists))
 		}
 		if err := s.st.UpdateUnitContainer(ctx, args.UnitName, cloudContainer); err != nil {
-			return errors.Annotatef(err, "updating unit %q", args.UnitName)
+			return interrors.Errorf("updating unit %q %w", args.UnitName, err)
 		}
 
 		// We want to transition to using unit UUID instead of name.
 		unitUUID, err := s.st.GetUnitUUID(ctx, args.UnitName)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		return s.st.SetUnitPassword(ctx, unitUUID, application.PasswordInfo{
 			PasswordHash:  args.PasswordHash,
 			HashAlgorithm: application.HashAlgorithmSHA256,
 		})
 	})
-	return errors.Annotatef(err, "saving caas unit %q", args.UnitName)
+	return interrors.Errorf("saving caas unit %q %w", args.UnitName, err)
 }
 
 func (s *ApplicationService) insertCAASUnit(
@@ -772,11 +774,11 @@ func (s *ApplicationService) insertCAASUnit(
 ) error {
 	appScale, err := s.st.GetApplicationScaleState(ctx, appID)
 	if err != nil {
-		return errors.Annotatef(err, "getting application scale state for app %q", appID)
+		return interrors.Errorf("getting application scale state for app %q %w", appID, err)
 	}
 	if orderedID >= appScale.Scale ||
 		(appScale.Scaling && orderedID >= appScale.ScaleTarget) {
-		return fmt.Errorf("unrequired unit %s is not assigned%w", arg.UnitName, errors.Hide(applicationerrors.UnitNotAssigned))
+		return interrors.Errorf("unrequired unit %s is not assigned%w", arg.UnitName, errors.Hide(applicationerrors.UnitNotAssigned))
 	}
 	return s.st.InsertUnit(ctx, appID, arg)
 }
@@ -801,26 +803,26 @@ func (s *ApplicationService) UpdateCAASUnit(ctx context.Context, unitName coreun
 	}
 	appName, err := names.UnitApplication(unitName.String())
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 	err = s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		_, appLife, err := s.st.GetApplicationLife(ctx, appName)
 		if err != nil {
-			return fmt.Errorf("getting application %q life: %w", appName, err)
+			return interrors.Errorf("getting application %q life: %w", appName, err)
 		}
 		if appLife != life.Alive {
-			return fmt.Errorf("application %q is not alive%w", appName, errors.Hide(applicationerrors.ApplicationNotAlive))
+			return interrors.Errorf("application %q is not alive%w", appName, errors.Hide(applicationerrors.ApplicationNotAlive))
 		}
 
 		if cloudContainer != nil {
 			if err := s.st.UpdateUnitContainer(ctx, unitName, cloudContainer); err != nil {
-				return errors.Annotatef(err, "updating cloud container %q", unitName)
+				return interrors.Errorf("updating cloud container %q %w", unitName, err)
 			}
 		}
 		// We want to transition to using unit UUID instead of name.
 		unitUUID, err := s.st.GetUnitUUID(ctx, unitName)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		now := time.Now()
 		since := func(in *time.Time) time.Time {
@@ -839,7 +841,7 @@ func (s *ApplicationService) UpdateCAASUnit(ctx context.Context, unitName coreun
 					Since: since(params.AgentStatus.Since),
 				},
 			}); err != nil {
-				return errors.Annotatef(err, "saving unit %q agent status ", unitName)
+				return interrors.Errorf("saving unit %q agent status  %w", unitName, err)
 			}
 		}
 		if params.WorkloadStatus != nil {
@@ -852,7 +854,7 @@ func (s *ApplicationService) UpdateCAASUnit(ctx context.Context, unitName coreun
 					Since: since(params.WorkloadStatus.Since),
 				},
 			}); err != nil {
-				return errors.Annotatef(err, "saving unit %q workload status ", unitName)
+				return interrors.Errorf("saving unit %q workload status  %w", unitName, err)
 			}
 		}
 		if params.CloudContainerStatus != nil {
@@ -865,12 +867,12 @@ func (s *ApplicationService) UpdateCAASUnit(ctx context.Context, unitName coreun
 					Since: since(params.CloudContainerStatus.Since),
 				},
 			}); err != nil {
-				return errors.Annotatef(err, "saving unit %q cloud container status ", unitName)
+				return interrors.Errorf("saving unit %q cloud container status  %w", unitName, err)
 			}
 		}
 		return nil
 	})
-	return errors.Annotatef(err, "updating caas unit %q", unitName)
+	return interrors.Errorf("updating caas unit %q %w", unitName, err)
 }
 
 // SetUnitPassword updates the password for the specified unit, returning an error
@@ -879,7 +881,7 @@ func (s *ApplicationService) SetUnitPassword(ctx context.Context, unitName coreu
 	return s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		unitUUID, err := s.st.GetUnitUUID(ctx, unitName)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		return s.st.SetUnitPassword(ctx, unitUUID, application.PasswordInfo{
 			PasswordHash:  password,
@@ -897,10 +899,10 @@ func (s *ApplicationService) DeleteApplication(ctx context.Context, name string)
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		var err error
 		cleanups, err = s.deleteApplication(ctx, name)
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
-		return errors.Annotatef(err, "deleting application %q", name)
+		return interrors.Errorf("deleting application %q %w", name, err)
 	}
 	for _, cleanup := range cleanups {
 		cleanup(ctx)
@@ -912,19 +914,19 @@ func (s *ApplicationService) deleteApplication(ctx domain.AtomicContext, name st
 	// Get app owned secrets.
 	uris, err := s.st.GetSecretsForApplication(ctx, name)
 	if err != nil {
-		return nil, errors.Annotatef(err, "getting application owned secrets for %q", name)
+		return nil, interrors.Errorf("getting application owned secrets for %q %w", name, err)
 	}
 	// Delete app owned secrets.
 	for _, uri := range uris {
 		s.logger.Debugf("deleting application %q secret: %s", name, uri.ID)
 		err := s.secretDeleter.DeleteSecret(ctx, uri, nil)
 		if err != nil {
-			return nil, errors.Annotatef(err, "deleting secret %q", uri)
+			return nil, interrors.Errorf("deleting secret %q %w", uri, err)
 		}
 	}
 
 	err = s.st.DeleteApplication(ctx, name)
-	return nil, errors.Annotatef(err, "deleting application %q", name)
+	return nil, interrors.Errorf("deleting application %q %w", name, err)
 }
 
 // DestroyApplication prepares an application for removal from the model
@@ -934,15 +936,15 @@ func (s *ApplicationService) DestroyApplication(ctx context.Context, appName str
 	// For now, all we do is advance the application's life to Dying.
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.GetApplicationID(ctx, appName)
-		if errors.Is(err, applicationerrors.ApplicationNotFound) {
+		if interrors.Is(err, applicationerrors.ApplicationNotFound) {
 			return nil
 		}
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		return s.st.SetApplicationLife(ctx, appID, life.Dying)
 	})
-	return errors.Annotatef(err, "destroying application %q", appName)
+	return interrors.Errorf("destroying application %q %w", appName, err)
 }
 
 // EnsureApplicationDead is called by the cleanup worker if a mongo
@@ -951,15 +953,15 @@ func (s *ApplicationService) DestroyApplication(ctx context.Context, appName str
 func (s *ApplicationService) EnsureApplicationDead(ctx context.Context, appName string) error {
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.GetApplicationID(ctx, appName)
-		if errors.Is(err, applicationerrors.ApplicationNotFound) {
+		if interrors.Is(err, applicationerrors.ApplicationNotFound) {
 			return nil
 		}
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		return s.st.SetApplicationLife(ctx, appID, life.Dead)
 	})
-	return errors.Annotatef(err, "setting application %q life to Dead", appName)
+	return interrors.Errorf("setting application %q life to Dead %w", appName, err)
 }
 
 // UpdateApplicationCharm sets a new charm for the application, validating that aspects such
@@ -983,12 +985,12 @@ func (s *ApplicationService) GetApplicationIDByName(ctx context.Context, name st
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.GetApplicationID(ctx, name)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		id = appID
 		return nil
 	})
-	return id, errors.Trace(err)
+	return id, interrors.Capture(err)
 }
 
 // GetCharmIDByApplicationName returns a charm ID by application name. It
@@ -1022,39 +1024,39 @@ func (s *ApplicationService) GetCharmByApplicationID(ctx context.Context, id cor
 	error,
 ) {
 	if err := id.Validate(); err != nil {
-		return nil, domaincharm.CharmOrigin{}, application.Platform{}, internalerrors.Errorf("application ID: %w%w", err, errors.Hide(applicationerrors.ApplicationIDNotValid))
+		return nil, domaincharm.CharmOrigin{}, application.Platform{}, internalerrors.Errorf("application ID: %w%w", err).Add(applicationerrors.ApplicationIDNotValid)
 	}
 
 	charm, origin, platform, err := s.st.GetCharmByApplicationID(ctx, id)
 	if err != nil {
-		return nil, origin, platform, errors.Trace(err)
+		return nil, origin, platform, interrors.Capture(err)
 	}
 
 	// The charm needs to be decoded into the internalcharm.Charm type.
 
 	metadata, err := decodeMetadata(charm.Metadata)
 	if err != nil {
-		return nil, origin, platform, errors.Trace(err)
+		return nil, origin, platform, interrors.Capture(err)
 	}
 
 	manifest, err := decodeManifest(charm.Manifest)
 	if err != nil {
-		return nil, origin, platform, errors.Trace(err)
+		return nil, origin, platform, interrors.Capture(err)
 	}
 
 	actions, err := decodeActions(charm.Actions)
 	if err != nil {
-		return nil, origin, platform, errors.Trace(err)
+		return nil, origin, platform, interrors.Capture(err)
 	}
 
 	config, err := decodeConfig(charm.Config)
 	if err != nil {
-		return nil, origin, platform, errors.Trace(err)
+		return nil, origin, platform, interrors.Capture(err)
 	}
 
 	lxdProfile, err := decodeLXDProfile(charm.LXDProfile)
 	if err != nil {
-		return nil, origin, platform, errors.Trace(err)
+		return nil, origin, platform, interrors.Capture(err)
 	}
 
 	return internalcharm.NewCharmBase(
@@ -1071,7 +1073,7 @@ func (s *ApplicationService) GetCharmByApplicationID(ctx context.Context, id cor
 func (s *ApplicationService) addDefaultStorageDirectives(ctx context.Context, modelType coremodel.ModelType, allDirectives map[string]storage.Directive, charmMeta *internalcharm.Meta) error {
 	defaults, err := s.st.StorageDefaults(ctx)
 	if err != nil {
-		return errors.Annotate(err, "getting storage defaults")
+		return interrors.Errorf("getting storage defaults %w", err)
 	}
 	return domainstorage.StorageDirectivesWithDefaults(charmMeta.Storage, modelType, defaults, allDirectives)
 }
@@ -1079,22 +1081,22 @@ func (s *ApplicationService) addDefaultStorageDirectives(ctx context.Context, mo
 func (s *ApplicationService) validateStorageDirectives(ctx context.Context, modelType coremodel.ModelType, allDirectives map[string]storage.Directive, charm internalcharm.Charm) error {
 	registry, err := s.storageRegistryGetter.GetStorageRegistry(ctx)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	validator, err := domainstorage.NewStorageDirectivesValidator(modelType, registry, s.st)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 	err = validator.ValidateStorageDirectivesAgainstCharm(ctx, allDirectives, charm)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 	// Ensure all stores have directives specified. Defaults should have
 	// been set by this point, if the user didn't specify any.
 	for name, charmStorage := range charm.Meta().Storage {
 		if _, ok := allDirectives[name]; !ok && charmStorage.CountMin > 0 {
-			return fmt.Errorf("%w for store %q", applicationerrors.MissingStorageDirective, name)
+			return interrors.Errorf("%w for store %q", applicationerrors.MissingStorageDirective, name)
 		}
 	}
 	return nil
@@ -1127,19 +1129,19 @@ func (s *ApplicationService) CAASUnitTerminating(ctx context.Context, appName st
 		caasApp := broker.Application(appName, caas.DeploymentStateful)
 		appState, err := caasApp.State()
 		if err != nil {
-			return false, errors.Trace(err)
+			return false, interrors.Capture(err)
 		}
 		var scaleInfo application.ScaleState
 		err = s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 			appID, err := s.st.GetApplicationID(ctx, appName)
 			if err != nil {
-				return errors.Trace(err)
+				return interrors.Capture(err)
 			}
 			scaleInfo, err = s.st.GetApplicationScaleState(ctx, appID)
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		})
 		if err != nil {
-			return false, errors.Trace(err)
+			return false, interrors.Capture(err)
 		}
 		if unitNum >= scaleInfo.Scale || unitNum >= appState.DesiredReplicas {
 			restart = false
@@ -1148,7 +1150,7 @@ func (s *ApplicationService) CAASUnitTerminating(ctx context.Context, appName st
 		// Both handled the same way.
 		restart = true
 	default:
-		return false, errors.NotSupportedf("unknown deployment type")
+		return false, interrors.Errorf("unknown deployment type %w", coreerrors.NotSupported)
 	}
 	return restart, nil
 }
@@ -1161,9 +1163,9 @@ func (s *ApplicationService) GetApplicationLife(ctx context.Context, appName str
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		_, appLife, err := s.st.GetApplicationLife(ctx, appName)
 		result = appLife.Value()
-		return errors.Annotatef(err, "getting life for %q", appName)
+		return interrors.Errorf("getting life for %q %w", appName, err)
 	})
-	return result, errors.Trace(err)
+	return result, interrors.Capture(err)
 }
 
 // SetApplicationScale sets the application's desired scale value, returning an error
@@ -1171,23 +1173,23 @@ func (s *ApplicationService) GetApplicationLife(ctx context.Context, appName str
 // This is used on CAAS models.
 func (s *ApplicationService) SetApplicationScale(ctx context.Context, appName string, scale int) error {
 	if scale < 0 {
-		return fmt.Errorf("application scale %d not valid%w", scale, errors.Hide(applicationerrors.ScaleChangeInvalid))
+		return interrors.Errorf("application scale %d not valid%w", scale, errors.Hide(applicationerrors.ScaleChangeInvalid))
 	}
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.GetApplicationID(ctx, appName)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		appScale, err := s.st.GetApplicationScaleState(ctx, appID)
 		if err != nil {
-			return errors.Annotatef(err, "getting application scale state for app %q", appID)
+			return interrors.Errorf("getting application scale state for app %q %w", appID, err)
 		}
 		s.logger.Tracef(
 			"SetScale DesiredScale %v -> %v", appScale.Scale, scale,
 		)
 		return s.st.SetDesiredApplicationScale(ctx, appID, scale)
 	})
-	return errors.Annotatef(err, "setting scale for application %q", appName)
+	return interrors.Errorf("setting scale for application %q %w", appName, err)
 }
 
 // GetApplicationScale returns the desired scale of an application, returning an error
@@ -1195,7 +1197,7 @@ func (s *ApplicationService) SetApplicationScale(ctx context.Context, appName st
 // This is used on CAAS models.
 func (s *ApplicationService) GetApplicationScale(ctx context.Context, appName string) (int, error) {
 	_, scale, err := s.getApplicationScaleAndID(ctx, appName)
-	return scale, errors.Trace(err)
+	return scale, interrors.Capture(err)
 }
 
 func (s *ApplicationService) getApplicationScaleAndID(ctx context.Context, appName string) (coreapplication.ID, int, error) {
@@ -1207,13 +1209,13 @@ func (s *ApplicationService) getApplicationScaleAndID(ctx context.Context, appNa
 		var err error
 		appID, err = s.st.GetApplicationID(ctx, appName)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 
 		scaleState, err = s.st.GetApplicationScaleState(ctx, appID)
-		return errors.Annotatef(err, "getting scaling state for %q", appName)
+		return interrors.Errorf("getting scaling state for %q %w", appName, err)
 	})
-	return appID, scaleState.Scale, errors.Trace(err)
+	return appID, scaleState.Scale, interrors.Capture(err)
 }
 
 // ChangeApplicationScale alters the existing scale by the provided change amount, returning the new amount.
@@ -1225,24 +1227,25 @@ func (s *ApplicationService) ChangeApplicationScale(ctx context.Context, appName
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.GetApplicationID(ctx, appName)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		currentScaleState, err := s.st.GetApplicationScaleState(ctx, appID)
 		if err != nil {
-			return errors.Annotatef(err, "getting current scale state for %q", appName)
+			return interrors.Errorf("getting current scale state for %q %w", appName, err)
 		}
 
 		newScale = currentScaleState.Scale + scaleChange
 		s.logger.Tracef("ChangeScale DesiredScale %v, scaleChange %v, newScale %v", currentScaleState.Scale, scaleChange, newScale)
 		if newScale < 0 {
 			newScale = currentScaleState.Scale
-			return fmt.Errorf(
+			return interrors.Errorf(
 				"%w: cannot remove more units than currently exist", applicationerrors.ScaleChangeInvalid)
+
 		}
 		err = s.st.SetDesiredApplicationScale(ctx, appID, newScale)
-		return errors.Annotatef(err, "changing scaling state for %q", appName)
+		return interrors.Errorf("changing scaling state for %q %w", appName, err)
 	})
-	return newScale, errors.Annotatef(err, "changing scale for %q", appName)
+	return newScale, interrors.Errorf("changing scale for %q %w", appName, err)
 }
 
 // SetApplicationScalingState updates the scale state of an application, returning an error
@@ -1252,11 +1255,11 @@ func (s *ApplicationService) SetApplicationScalingState(ctx context.Context, app
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, appLife, err := s.st.GetApplicationLife(ctx, appName)
 		if err != nil {
-			return errors.Annotatef(err, "getting life for %q", appName)
+			return interrors.Errorf("getting life for %q %w", appName, err)
 		}
 		currentScaleState, err := s.st.GetApplicationScaleState(ctx, appID)
 		if err != nil {
-			return errors.Annotatef(err, "getting current scale state for %q", appName)
+			return interrors.Errorf("getting current scale state for %q %w", appName, err)
 		}
 
 		var scale *int
@@ -1273,9 +1276,9 @@ func (s *ApplicationService) SetApplicationScalingState(ctx context.Context, app
 			}
 		}
 		err = s.st.SetApplicationScalingState(ctx, appID, scale, scaleTarget, scaling)
-		return errors.Annotatef(err, "updating scaling state for %q", appName)
+		return interrors.Errorf("updating scaling state for %q %w", appName, err)
 	})
-	return errors.Annotatef(err, "setting scale for %q", appName)
+	return interrors.Errorf("setting scale for %q %w", appName, err)
 
 }
 
@@ -1287,15 +1290,15 @@ func (s *ApplicationService) GetApplicationScalingState(ctx context.Context, app
 	err := s.st.RunAtomic(ctx, func(ctx domain.AtomicContext) error {
 		appID, err := s.st.GetApplicationID(ctx, appName)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 		scaleState, err = s.st.GetApplicationScaleState(ctx, appID)
-		return errors.Annotatef(err, "getting scaling state for %q", appName)
+		return interrors.Errorf("getting scaling state for %q %w", appName, err)
 	})
 	return ScalingState{
 		ScaleTarget: scaleState.ScaleTarget,
 		Scaling:     scaleState.Scaling,
-	}, errors.Trace(err)
+	}, interrors.Capture(err)
 }
 
 // AgentVersionGetter is responsible for retrieving the agent version for a
@@ -1359,7 +1362,7 @@ func (s *ProviderApplicationService) GetSupportedFeatures(ctx context.Context) (
 	})
 
 	provider, err := s.provider(ctx)
-	if errors.Is(err, errors.NotSupported) {
+	if interrors.Is(err, coreerrors.NotSupported) {
 		return fs, nil
 	} else if err != nil {
 		return fs, err
@@ -1367,7 +1370,7 @@ func (s *ProviderApplicationService) GetSupportedFeatures(ctx context.Context) (
 
 	envFs, err := provider.SupportedFeatures()
 	if err != nil {
-		return fs, fmt.Errorf("enumerating features supported by environment: %w", err)
+		return fs, interrors.Errorf("enumerating features supported by environment: %w", err)
 	}
 
 	fs.Merge(envFs)
@@ -1427,14 +1430,14 @@ func (s *WatchableApplicationService) WatchApplicationUnitLife(appName string) (
 func (s *WatchableApplicationService) WatchApplicationScale(ctx context.Context, appName string) (watcher.NotifyWatcher, error) {
 	appID, currentScale, err := s.getApplicationScaleAndID(ctx, appName)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	mask := changestream.Create | changestream.Update
 	mapper := func(ctx context.Context, db coredatabase.TxnRunner, changes []changestream.ChangeEvent) ([]changestream.ChangeEvent, error) {
 		newScale, err := s.GetApplicationScale(ctx, appName)
 		if err != nil {
-			return nil, errors.Trace(err)
+			return nil, interrors.Capture(err)
 		}
 		// Only dispatch if the scale has changed.
 		if newScale != currentScale {

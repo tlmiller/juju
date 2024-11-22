@@ -3,12 +3,10 @@
 
 package errors
 
-import (
-	"github.com/juju/errors"
-)
+import interrors "github.com/juju/juju/internal/errors"
 
 const (
 	// NotFound describes an error that occurs when the cloud being operated on
 	// does not exist.
-	NotFound = errors.ConstError("cloud not found")
+	NotFound = interrors.ConstError("cloud not found")
 )

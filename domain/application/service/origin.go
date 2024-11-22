@@ -4,20 +4,19 @@
 package service
 
 import (
-	"github.com/juju/errors"
-
 	"github.com/juju/juju/core/arch"
 	corecharm "github.com/juju/juju/core/charm"
 	"github.com/juju/juju/core/os/ostype"
 	"github.com/juju/juju/domain/application"
 	domaincharm "github.com/juju/juju/domain/application/charm"
 	"github.com/juju/juju/internal/charm"
+	"github.com/juju/juju/internal/errors"
 )
 
 func encodeCharmOrigin(origin corecharm.Origin, name string) (domaincharm.CharmOrigin, *application.Channel, application.Platform, error) {
 	source, err := encodeCharmOriginSource(origin.Source)
 	if err != nil {
-		return domaincharm.CharmOrigin{}, nil, application.Platform{}, errors.Trace(err)
+		return domaincharm.CharmOrigin{}, nil, application.Platform{}, errors.Capture(err)
 	}
 
 	revision := -1
@@ -27,12 +26,12 @@ func encodeCharmOrigin(origin corecharm.Origin, name string) (domaincharm.CharmO
 
 	channel, err := encodeChannel(origin.Channel)
 	if err != nil {
-		return domaincharm.CharmOrigin{}, nil, application.Platform{}, errors.Trace(err)
+		return domaincharm.CharmOrigin{}, nil, application.Platform{}, errors.Capture(err)
 	}
 
 	platform, err := encodePlatform(origin.Platform)
 	if err != nil {
-		return domaincharm.CharmOrigin{}, nil, application.Platform{}, errors.Trace(err)
+		return domaincharm.CharmOrigin{}, nil, application.Platform{}, errors.Capture(err)
 	}
 
 	return domaincharm.CharmOrigin{
@@ -68,7 +67,7 @@ func encodeChannel(ch *charm.Channel) (*application.Channel, error) {
 
 	risk, err := encodeChannelRisk(normalize.Risk)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.Capture(err)
 	}
 
 	return &application.Channel{
@@ -96,12 +95,12 @@ func encodeChannelRisk(risk charm.Risk) (application.ChannelRisk, error) {
 func encodePlatform(platform corecharm.Platform) (application.Platform, error) {
 	ostype, err := encodeOSType(platform.OS)
 	if err != nil {
-		return application.Platform{}, errors.Trace(err)
+		return application.Platform{}, errors.Capture(err)
 	}
 
 	arch, err := encodeArchitecture(platform.Architecture)
 	if err != nil {
-		return application.Platform{}, errors.Trace(err)
+		return application.Platform{}, errors.Capture(err)
 	}
 
 	return application.Platform{

@@ -7,13 +7,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/juju/errors"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"go.uber.org/mock/gomock"
 	gc "gopkg.in/check.v1"
 
 	applicationtesting "github.com/juju/juju/core/application/testing"
+	coreerrors "github.com/juju/juju/core/errors"
 	resourcestesting "github.com/juju/juju/core/resources/testing"
 	unittesting "github.com/juju/juju/core/unit/testing"
 	applicationerrors "github.com/juju/juju/domain/application/errors"
@@ -54,7 +54,7 @@ func (s *resourceServiceSuite) TestGetApplicationResourceIDBadID(c *gc.C) {
 		Name:          "test-resource",
 	}
 	_, err := s.service.GetApplicationResourceID(context.Background(), args)
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *resourceServiceSuite) TestGetApplicationResourceIDBadName(c *gc.C) {
@@ -88,7 +88,7 @@ func (s *resourceServiceSuite) TestListResources(c *gc.C) {
 func (s *resourceServiceSuite) TestListResourcesBadID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 	_, err := s.service.ListResources(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *resourceServiceSuite) TestGetResource(c *gc.C) {
@@ -109,7 +109,7 @@ func (s *resourceServiceSuite) TestGetResource(c *gc.C) {
 func (s *resourceServiceSuite) TestGetResourceBadID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 	_, err := s.service.GetResource(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 var fingerprint = []byte("123456789012345678901234567890123456789012345678")
@@ -156,7 +156,7 @@ func (s *resourceServiceSuite) TestSetResourceBadID(c *gc.C) {
 		ApplicationID: applicationtesting.GenApplicationUUID(c),
 	}
 	_, err := s.service.SetResource(context.Background(), args)
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *resourceServiceSuite) TestSetResourceBadSuppliedBy(c *gc.C) {
@@ -167,7 +167,7 @@ func (s *resourceServiceSuite) TestSetResourceBadSuppliedBy(c *gc.C) {
 		SuppliedByType: resource.Application,
 	}
 	_, err := s.service.SetResource(context.Background(), args)
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *resourceServiceSuite) TestSetResourceBadResource(c *gc.C) {
@@ -184,7 +184,7 @@ func (s *resourceServiceSuite) TestSetResourceBadResource(c *gc.C) {
 	}
 
 	_, err := s.service.SetResource(context.Background(), args)
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *resourceServiceSuite) TestSetUnitResource(c *gc.C) {
@@ -237,7 +237,7 @@ func (s *resourceServiceSuite) TestOpenApplicationResourceBadID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, _, err := s.service.OpenApplicationResource(context.Background(), "id")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *resourceServiceSuite) TestOpenUnitResource(c *gc.C) {
@@ -261,14 +261,14 @@ func (s *resourceServiceSuite) TestOpenUnitResourceBadUnitID(c *gc.C) {
 	resourceID := resourcestesting.GenResourceID(c)
 
 	_, _, err := s.service.OpenUnitResource(context.Background(), resourceID, "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *resourceServiceSuite) TestOpenUnitResourceBadResourceID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, _, err := s.service.OpenUnitResource(context.Background(), "", "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *resourceServiceSuite) TestSetRepositoryResources(c *gc.C) {

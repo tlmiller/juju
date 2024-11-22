@@ -3,10 +3,10 @@
 
 package errors
 
-import "github.com/juju/errors"
+import interrors "github.com/juju/juju/internal/errors"
 
 const (
 	// UnitNotFound describes an error that occurs when
 	// the unit being operated on does not exist.
-	UnitNotFound = errors.ConstError("unit not found")
+	UnitNotFound = interrors.ConstError("unit not found")
 )

@@ -3,12 +3,10 @@
 
 package errors
 
-import (
-	"github.com/juju/errors"
-)
+import interrors "github.com/juju/juju/internal/errors"
 
 const (
 	// UnknownKind is raised when the Kind of an ID provided to the annotations
 	// state layer is not recognized
-	UnknownKind = errors.ConstError("unknown kind")
+	UnknownKind = interrors.ConstError("unknown kind")
 )

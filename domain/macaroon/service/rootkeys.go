@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-macaroon-bakery/macaroon-bakery/v3/bakery"
 	"github.com/go-macaroon-bakery/macaroon-bakery/v3/bakery/dbrootkeystore"
-	"github.com/juju/errors"
 
 	"github.com/juju/juju/domain/macaroon"
 	macaroonerrors "github.com/juju/juju/domain/macaroon/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // RootKeyState describes the persistence layer for
@@ -59,7 +59,7 @@ func NewRootKeyService(st RootKeyState, clock macaroon.Clock) *RootKeyService {
 // if not key is found, a bakery.ErrNotFound error is returned.
 func (s *RootKeyService) GetKeyContext(ctx context.Context, id []byte) (dbrootkeystore.RootKey, error) {
 	key, err := s.st.GetKey(ctx, id, s.clock.Now())
-	if errors.Is(err, macaroonerrors.KeyNotFound) {
+	if interrors.Is(err, macaroonerrors.KeyNotFound) {
 		return dbrootkeystore.RootKey{}, bakery.ErrNotFound
 	}
 	return decodeRootKey(key), nil
@@ -78,7 +78,7 @@ func (s *RootKeyService) GetKeyContext(ctx context.Context, id []byte) (dbrootke
 // nil error
 func (s *RootKeyService) FindLatestKeyContext(ctx context.Context, createdAfter, expiresAfter, expiresBefore time.Time) (dbrootkeystore.RootKey, error) {
 	key, err := s.st.FindLatestKey(ctx, createdAfter, expiresAfter, expiresBefore, s.clock.Now())
-	if errors.Is(err, macaroonerrors.KeyNotFound) {
+	if interrors.Is(err, macaroonerrors.KeyNotFound) {
 		return dbrootkeystore.RootKey{}, nil
 	}
 	return decodeRootKey(key), err

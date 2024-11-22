@@ -6,14 +6,15 @@ package service
 import (
 	"context"
 
-	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
 	"go.uber.org/mock/gomock"
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/cloud"
+	coreerrors "github.com/juju/juju/core/errors"
 	usertesting "github.com/juju/juju/core/user/testing"
 	"github.com/juju/juju/core/watcher/watchertest"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 type serviceSuite struct {
@@ -40,7 +41,7 @@ func (s *serviceSuite) TestCreateCloudFail(c *gc.C) {
 	cloud := cloud.Cloud{
 		Name: "fluffy",
 	}
-	s.state.EXPECT().CreateCloud(gomock.Any(), usertesting.GenNewName(c, "owner-name"), gomock.Any(), cloud).Return(errors.New("boom"))
+	s.state.EXPECT().CreateCloud(gomock.Any(), usertesting.GenNewName(c, "owner-name"), gomock.Any(), cloud).Return(interrors.New("boom"))
 
 	err := NewWatchableService(s.state, s.watcherFactory).CreateCloud(context.Background(), usertesting.GenNewName(c, "owner-name"), cloud)
 	c.Assert(err, gc.ErrorMatches, `creating cloud "fluffy": boom`)
@@ -64,7 +65,7 @@ func (s *serviceSuite) TestUpdateCloudError(c *gc.C) {
 	cloud := cloud.Cloud{
 		Name: "fluffy",
 	}
-	s.state.EXPECT().UpdateCloud(gomock.Any(), cloud).Return(errors.New("boom"))
+	s.state.EXPECT().UpdateCloud(gomock.Any(), cloud).Return(interrors.New("boom"))
 
 	err := NewWatchableService(s.state, s.watcherFactory).UpdateCloud(context.Background(), cloud)
 	c.Assert(err, gc.ErrorMatches, `updating cloud "fluffy": boom`)
@@ -108,11 +109,11 @@ func (s *serviceSuite) TestCloud(c *gc.C) {
 func (s *serviceSuite) TestCloudNotFound(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	s.state.EXPECT().Cloud(gomock.Any(), "fluffy").Return(nil, errors.NotFoundf(`cloud "fluffy"`))
+	s.state.EXPECT().Cloud(gomock.Any(), "fluffy").Return(nil, interrors.Errorf(`cloud "fluffy"`+" %w", coreerrors.NotFound))
 
 	result, err := NewWatchableService(s.state, s.watcherFactory).Cloud(context.Background(), "fluffy")
 	c.Assert(err, gc.ErrorMatches, `cloud "fluffy" not found`)
-	c.Check(err, jc.ErrorIs, errors.NotFound)
+	c.Check(err, jc.ErrorIs, coreerrors.NotFound)
 	c.Check(result, gc.IsNil)
 }
 

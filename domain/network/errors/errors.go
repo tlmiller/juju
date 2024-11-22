@@ -3,24 +3,22 @@
 
 package errors
 
-import (
-	"github.com/juju/errors"
-)
+import interrors "github.com/juju/juju/internal/errors"
 
 const (
 	// SpaceAlreadyExists is returned when a space already exists.
-	SpaceAlreadyExists = errors.ConstError("space already exists")
+	SpaceAlreadyExists = interrors.ConstError("space already exists")
 
 	// SpaceNotFound is returned when a space is not found.
-	SpaceNotFound = errors.ConstError("space not found")
+	SpaceNotFound = interrors.ConstError("space not found")
 
 	// SubnetNotFound is returned when a subnet is not found.
-	SubnetNotFound = errors.ConstError("subnet not found")
+	SubnetNotFound = interrors.ConstError("subnet not found")
 
 	// SpaceNameNotValid is returned when a space name is not valid.
-	SpaceNameNotValid = errors.ConstError("space name is not valid")
+	SpaceNameNotValid = interrors.ConstError("space name is not valid")
 
 	// AvailabilityZoneNotFound is returned when an availability zone is
 	// not found.
-	AvailabilityZoneNotFound = errors.ConstError("availability zone not found")
+	AvailabilityZoneNotFound = interrors.ConstError("availability zone not found")
 )

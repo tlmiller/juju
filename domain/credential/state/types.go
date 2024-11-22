@@ -4,9 +4,8 @@
 package state
 
 import (
-	"github.com/juju/errors"
-
 	"github.com/juju/juju/domain/credential"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // These structs represent the persistent cloud credential entity schema in the database.
@@ -123,7 +122,7 @@ type Credentials []Credential
 func (rows Credentials) ToCloudCredentials(cloudName string, authTypes []authType, keyValues []CredentialAttribute) ([]credential.CloudCredentialResult, error) {
 	if n := len(rows); n != len(authTypes) || n != len(keyValues) {
 		// Should never happen.
-		return nil, errors.New("row length mismatch")
+		return nil, interrors.New("row length mismatch")
 	}
 
 	var result []credential.CloudCredentialResult

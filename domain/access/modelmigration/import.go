@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/juju/description/v8"
-	"github.com/juju/errors"
 
 	"github.com/juju/juju/core/logger"
 	coremodel "github.com/juju/juju/core/model"
@@ -18,6 +17,7 @@ import (
 	accesserrors "github.com/juju/juju/domain/access/errors"
 	"github.com/juju/juju/domain/access/service"
 	"github.com/juju/juju/domain/access/state"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // Coordinator is the interface that is used to add operations to a migration.
@@ -78,7 +78,7 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 		name := user.NameFromTag(u.Name())
 		access := corepermission.Access(u.Access())
 		if err := access.Validate(); err != nil {
-			return errors.Annotatef(err, "importing access for user %q", name)
+			return interrors.Errorf("importing access for user %q %w", name, err)
 		}
 		_, err := i.service.CreatePermission(ctx, corepermission.UserAccessSpec{
 			AccessSpec: corepermission.AccessSpec{
@@ -90,17 +90,17 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 			},
 			User: name,
 		})
-		if err != nil && !errors.Is(err, accesserrors.PermissionAlreadyExists) {
+		if err != nil && !interrors.Is(err, accesserrors.PermissionAlreadyExists) {
 			// If the permission already exists then it must be the model owner
 			// who is granted admin access when the model is created.
-			return errors.Annotatef(err, "creating permission for user %q", name)
+			return interrors.Errorf("creating permission for user %q %w", name, err)
 		}
 
 		lastLogin := u.LastConnection()
 		if !lastLogin.IsZero() {
 			err := i.service.SetLastModelLogin(ctx, name, coremodel.UUID(modelUUID), lastLogin)
 			if err != nil {
-				return errors.Annotatef(err, "setting model last login for user %q", name)
+				return interrors.Errorf("setting model last login for user %q %w", name, err)
 			}
 		}
 

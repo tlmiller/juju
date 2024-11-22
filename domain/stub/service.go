@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"github.com/canonical/sqlair"
-	jujuerrors "github.com/juju/errors"
 
 	"github.com/juju/juju/core/database"
 	"github.com/juju/juju/core/unit"
@@ -15,6 +14,7 @@ import (
 	applicationerrors "github.com/juju/juju/domain/application/errors"
 	machineerrors "github.com/juju/juju/domain/machine/errors"
 	"github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // StubService is a special service that collects temporary methods required for
@@ -47,7 +47,7 @@ func NewStubService(
 func (s *StubService) AssignUnitsToMachines(ctx context.Context, groupedUnitsByMachine map[string][]unit.Name) error {
 	db, err := s.DB()
 	if err != nil {
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	getNetNodeQuery, err := s.Prepare(`

@@ -6,10 +6,8 @@ package state
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/canonical/sqlair"
-	"github.com/juju/errors"
 	"github.com/juju/version/v2"
 
 	"github.com/juju/juju/core/database"
@@ -21,6 +19,7 @@ import (
 	modelerrors "github.com/juju/juju/domain/model/errors"
 	internaldatabase "github.com/juju/juju/internal/database"
 	internalerrors "github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/uuid"
 )
 
@@ -47,11 +46,11 @@ func NewModelState(
 func (s *ModelState) Create(ctx context.Context, args model.ReadOnlyModelCreationArgs) error {
 	db, err := s.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		return errors.Trace(CreateReadOnlyModel(ctx, args, s, tx))
+		return interrors.Capture(CreateReadOnlyModel(ctx, args, s, tx))
 	})
 }
 
@@ -59,14 +58,14 @@ func (s *ModelState) Create(ctx context.Context, args model.ReadOnlyModelCreatio
 func (s *ModelState) Delete(ctx context.Context, uuid coremodel.UUID) error {
 	db, err := s.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	mUUID := dbUUID{UUID: uuid.String()}
 
 	modelStmt, err := s.Prepare(`DELETE FROM model WHERE uuid = $dbUUID.uuid;`, mUUID)
 	if err != nil {
-		return errors.Annotatef(err, "preparing delete model statement")
+		return interrors.Errorf("preparing delete model statement %w", err)
 	}
 
 	// Once we get to this point, the model is hosed. We don't expect the
@@ -75,32 +74,32 @@ func (s *ModelState) Delete(ctx context.Context, uuid coremodel.UUID) error {
 	// model being deleted unexpected scenarios.
 	modelTriggerStmt, err := s.Prepare(`DROP TRIGGER IF EXISTS trg_model_immutable_delete;`)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		if err := tx.Query(ctx, modelTriggerStmt).Run(); errors.Is(err, sqlair.ErrNoRows) {
+		if err := tx.Query(ctx, modelTriggerStmt).Run(); interrors.Is(err, sqlair.ErrNoRows) {
 			return modelerrors.NotFound
 		} else if err != nil && !internaldatabase.IsErrError(err) {
-			return fmt.Errorf("deleting model trigger %q: %w", uuid, err)
+			return interrors.Errorf("deleting model trigger %q: %w", uuid, err)
 		}
 
 		var outcome sqlair.Outcome
 		if err := tx.Query(ctx, modelStmt, mUUID).Get(&outcome); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+			if interrors.Is(err, sql.ErrNoRows) {
 				return modelerrors.NotFound
 			}
-			return fmt.Errorf("deleting model %q: %w", uuid, err)
+			return interrors.Errorf("deleting model %q: %w", uuid, err)
 		}
 		if affected, err := outcome.Result().RowsAffected(); err != nil {
-			return fmt.Errorf("deleting model %q: %w", uuid, err)
+			return interrors.Errorf("deleting model %q: %w", uuid, err)
 		} else if affected == 0 {
 			return modelerrors.NotFound
 		}
 		return nil
 	})
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	return nil
@@ -112,25 +111,25 @@ func (s *ModelState) Delete(ctx context.Context, uuid coremodel.UUID) error {
 func (s *ModelState) Model(ctx context.Context) (coremodel.ReadOnlyModel, error) {
 	db, err := s.DB()
 	if err != nil {
-		return coremodel.ReadOnlyModel{}, errors.Trace(err)
+		return coremodel.ReadOnlyModel{}, interrors.Capture(err)
 	}
 
 	m := dbReadOnlyModel{}
 	stmt, err := s.Prepare(`SELECT &dbReadOnlyModel.* FROM model`, m)
 	if err != nil {
-		return coremodel.ReadOnlyModel{}, errors.Annotatef(err, "preparing select read only model statement")
+		return coremodel.ReadOnlyModel{}, interrors.Errorf("preparing select read only model statement %w", err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
-		if err := tx.Query(ctx, stmt).Get(&m); errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("getting model read only information %w", modelerrors.NotFound)
+		if err := tx.Query(ctx, stmt).Get(&m); interrors.Is(err, sql.ErrNoRows) {
+			return interrors.Errorf("getting model read only information %w", modelerrors.NotFound)
 		} else if err != nil {
-			return fmt.Errorf("getting model read only information: %w", err)
+			return interrors.Errorf("getting model read only information: %w", err)
 		}
 		return nil
 	})
 	if err != nil {
-		return coremodel.ReadOnlyModel{}, errors.Trace(err)
+		return coremodel.ReadOnlyModel{}, interrors.Capture(err)
 	}
 
 	model := coremodel.ReadOnlyModel{
@@ -147,7 +146,7 @@ func (s *ModelState) Model(ctx context.Context) (coremodel.ReadOnlyModel, error)
 	if owner := m.CredentialOwner; owner != "" {
 		model.CredentialOwner, err = user.NewName(owner)
 		if err != nil {
-			return coremodel.ReadOnlyModel{}, errors.Trace(err)
+			return coremodel.ReadOnlyModel{}, interrors.Capture(err)
 		}
 	} else {
 		s.logger.Infof("model %s: cloud credential owner name is empty", model.Name)
@@ -160,12 +159,12 @@ func (s *ModelState) Model(ctx context.Context) (coremodel.ReadOnlyModel, error)
 
 	model.AgentVersion, err = version.Parse(agentVersion)
 	if err != nil {
-		return coremodel.ReadOnlyModel{}, fmt.Errorf("parsing model agent version %q: %w", agentVersion, err)
+		return coremodel.ReadOnlyModel{}, interrors.Errorf("parsing model agent version %q: %w", agentVersion, err)
 	}
 
 	model.ControllerUUID, err = uuid.UUIDFromString(m.ControllerUUID)
 	if err != nil {
-		return coremodel.ReadOnlyModel{}, fmt.Errorf("parsing controller uuid %q: %w", m.ControllerUUID, err)
+		return coremodel.ReadOnlyModel{}, interrors.Errorf("parsing controller uuid %q: %w", m.ControllerUUID, err)
 	}
 	return model, nil
 }
@@ -188,11 +187,11 @@ SELECT &dbUUID.uuid
 FROM model
 	`, uuid)
 	if err != nil {
-		return errors.Annotatef(err, "preparing check model exists statement")
+		return interrors.Errorf("preparing check model exists statement %w", err)
 	}
 
 	err = tx.Query(ctx, checkExistsStmt).Get(&uuid)
-	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+	if err != nil && !interrors.Is(err, sqlair.ErrNoRows) {
 		return internalerrors.Errorf("checking if model already exists: %w", err)
 	} else if err == nil {
 		return internalerrors.Errorf("read only model already exists in model database: %w", modelerrors.AlreadyExists)
@@ -216,18 +215,18 @@ FROM model
 INSERT INTO model (*) VALUES ($dbReadOnlyModel.*)
 `, dbReadOnlyModel{})
 	if err != nil {
-		return errors.Annotatef(err, "preparing insert model statement")
+		return interrors.Errorf("preparing insert model statement %w", err)
 	}
 
 	var outcome sqlair.Outcome
 	if err := tx.Query(ctx, insertStmt, m).Get(&outcome); err != nil {
-		return fmt.Errorf("creating model %q: %w", args.UUID, err)
+		return interrors.Errorf("creating model %q: %w", args.UUID, err)
 	}
 
 	// Double check that it was actually created.
 	affected, err := outcome.Result().RowsAffected()
 	if err != nil {
-		return fmt.Errorf("creating model %q: %w", args.UUID, err)
+		return interrors.Errorf("creating model %q: %w", args.UUID, err)
 	}
 	if affected != 1 {
 		return modelerrors.AlreadyExists

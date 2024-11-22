@@ -6,14 +6,13 @@ package service
 import (
 	"context"
 
-	"github.com/juju/errors"
-
 	"github.com/juju/juju/core/blockdevice"
 	"github.com/juju/juju/core/changestream"
 	"github.com/juju/juju/core/logger"
 	"github.com/juju/juju/core/watcher"
 	"github.com/juju/juju/core/watcher/eventsource"
 	"github.com/juju/juju/domain/filesystem"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 type getWatcherFunc = func(
@@ -81,7 +80,7 @@ func (s *Service) UpdateBlockDevices(ctx context.Context, machineId string, devi
 func (s *Service) AllBlockDevices(ctx context.Context) (map[string]blockdevice.BlockDevice, error) {
 	machineDevices, err := s.st.MachineBlockDevices(ctx)
 	if err != nil {
-		return nil, errors.Annotate(err, "loading all block devices")
+		return nil, interrors.Errorf("loading all block devices %w", err)
 	}
 	result := make(map[string]blockdevice.BlockDevice)
 	for _, md := range machineDevices {

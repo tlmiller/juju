@@ -7,7 +7,6 @@ import (
 	"context"
 	"slices"
 
-	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
 	"go.uber.org/mock/gomock"
 	gc "gopkg.in/check.v1"
@@ -16,6 +15,7 @@ import (
 	"github.com/juju/juju/core/model"
 	modeltesting "github.com/juju/juju/core/model/testing"
 	machineerrors "github.com/juju/juju/domain/machine/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 type serviceSuite struct {
@@ -136,7 +136,7 @@ func (s *serviceSuite) TestGetInitialAuthorisedKeysForContainerSuccess(c *gc.C) 
 func (s *serviceSuite) TestGetInitialAuthorisedKeysForContainerFailure(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	boom := errors.New("boom")
+	boom := interrors.New("boom")
 
 	s.controllerKeyProvider.EXPECT().ControllerAuthorisedKeys(gomock.Any()).Return(nil, nil).AnyTimes()
 	s.state.EXPECT().GetModelUUID(gomock.Any()).Return(s.modelId, nil)

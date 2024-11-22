@@ -9,7 +9,6 @@ import (
 	"github.com/canonical/sqlair"
 	"github.com/juju/collections/set"
 	"github.com/juju/collections/transform"
-	jujuerrors "github.com/juju/errors"
 
 	coreapplication "github.com/juju/juju/core/application"
 	"github.com/juju/juju/core/database"
@@ -19,6 +18,7 @@ import (
 	"github.com/juju/juju/domain"
 	"github.com/juju/juju/domain/port"
 	"github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 	"github.com/juju/juju/internal/uuid"
 )
 
@@ -39,7 +39,7 @@ func NewState(factory database.TxnRunnerFactory) *State {
 func (st *State) GetUnitOpenedPorts(ctx context.Context, unit coreunit.UUID) (network.GroupedPortRanges, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, jujuerrors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	unitUUID := unitUUID{UUID: unit}
@@ -61,7 +61,7 @@ WHERE unit_endpoint.unit_uuid = $unitUUID.unit_uuid
 		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		}
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
 		return nil, errors.Errorf("getting opened ports for unit %q: %w", unit, err)
@@ -90,7 +90,7 @@ WHERE unit_endpoint.unit_uuid = $unitUUID.unit_uuid
 func (s *State) GetAllOpenedPorts(ctx context.Context) (port.UnitGroupedPortRanges, error) {
 	db, err := s.DB()
 	if err != nil {
-		return nil, jujuerrors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	query, err := s.Prepare(`
@@ -110,7 +110,7 @@ JOIN unit ON unit_endpoint.unit_uuid = unit.uuid
 		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		}
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
 		return nil, errors.Errorf("getting all opened ports: %w", err)
@@ -139,7 +139,7 @@ JOIN unit ON unit_endpoint.unit_uuid = unit.uuid
 func (st *State) GetMachineOpenedPorts(ctx context.Context, machine string) (map[unit.Name]network.GroupedPortRanges, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, jujuerrors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	machineUUID := machineUUID{UUID: machine}
@@ -160,7 +160,7 @@ WHERE machine.uuid = $machineUUID.machine_uuid
 		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		}
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
 		return nil, errors.Errorf("getting opened ports for machine %q: %w", machine, err)
@@ -178,7 +178,7 @@ WHERE machine.uuid = $machineUUID.machine_uuid
 func (st *State) GetApplicationOpenedPorts(ctx context.Context, application coreapplication.ID) (port.UnitEndpointPortRanges, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, jujuerrors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	applicationUUID := applicationUUID{UUID: application}
@@ -198,7 +198,7 @@ WHERE application_uuid = $applicationUUID.application_uuid
 		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		}
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
 		return nil, errors.Errorf("getting opened ports for application %q: %w", application, err)
@@ -235,7 +235,7 @@ WHERE u2.uuid = $unitUUID.unit_uuid
 		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		}
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
 		return nil, errors.Errorf("getting opened ports for colocated units with %q: %w", unit, err)
@@ -270,7 +270,7 @@ AND unit_endpoint.endpoint = $endpointName.endpoint
 		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		}
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
 		return nil, errors.Errorf("getting opened ports for endpoint %q of unit %q: %w", endpoint, unit, err)
@@ -352,7 +352,7 @@ AND endpoint IN ($endpoints[:])
 	var endpoints []endpoint
 	err = tx.Query(ctx, getUnitEndpoints, unitUUID, endpointsUnderAction).GetAll(&endpoints)
 	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
-		return nil, jujuerrors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	foundEndpoints := set.NewStrings()
@@ -382,7 +382,7 @@ AND endpoint IN ($endpoints[:])
 	if len(newUnitEndpoints) > 0 {
 		err = tx.Query(ctx, insertUnitEndpoint, newUnitEndpoints).Run()
 		if err != nil {
-			return nil, jujuerrors.Trace(err)
+			return nil, interrors.Capture(err)
 		}
 	}
 
@@ -416,7 +416,7 @@ WHERE unit_endpoint.unit_uuid = $unitUUID.unit_uuid
 		return []endpointPortRangeUUID{}, nil
 	}
 	if err != nil {
-		return nil, jujuerrors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 	return openedPorts, nil
 }
@@ -477,7 +477,7 @@ func (st *State) openPorts(
 	if len(openPortRanges) > 0 {
 		err = tx.Query(ctx, insertPortRange, openPortRanges).Run()
 		if err != nil {
-			return jujuerrors.Trace(err)
+			return interrors.Capture(err)
 		}
 	}
 	return nil
@@ -493,7 +493,7 @@ func (st *State) getProtocolMap(ctx context.Context, tx *sqlair.TX) (map[string]
 	protocols := []protocol{}
 	err = tx.Query(ctx, getProtocols).GetAll(&protocols)
 	if err != nil {
-		return nil, jujuerrors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	protocolMap := map[string]int{}
@@ -545,7 +545,7 @@ WHERE uuid IN ($portRangeUUIDs[:])
 	if len(closePortRangeUUIDs) > 0 {
 		err = tx.Query(ctx, closePortRanges, closePortRangeUUIDs).Run()
 		if err != nil {
-			return jujuerrors.Trace(err)
+			return interrors.Capture(err)
 		}
 	}
 	return nil
@@ -577,7 +577,7 @@ WHERE unit_endpoint.unit_uuid = $unitUUID.unit_uuid
 		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		}
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
 		return nil, errors.Errorf("getting endpoints for unit %q: %w", unit, err)

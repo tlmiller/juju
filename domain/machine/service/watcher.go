@@ -11,7 +11,6 @@ import (
 
 	"github.com/juju/collections/set"
 	"github.com/juju/collections/transform"
-	"github.com/juju/errors"
 
 	"github.com/juju/juju/core/changestream"
 	"github.com/juju/juju/core/database"
@@ -20,6 +19,7 @@ import (
 	"github.com/juju/juju/core/watcher"
 	"github.com/juju/juju/core/watcher/eventsource"
 	machineerrors "github.com/juju/juju/domain/machine/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 type WatchableService struct {
@@ -115,7 +115,7 @@ func (s *WatchableService) WatchLXDProfiles(ctx context.Context, machineUUID str
 func (s *WatchableService) WatchMachineReboot(ctx context.Context, uuid string) (watcher.NotifyWatcher, error) {
 	uuids, err := s.machineToCareForReboot(ctx, uuid)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 	machines := set.NewStrings(uuids...)
 	return s.watcherFactory.NewNamespaceNotifyMapperWatcher(
@@ -129,10 +129,10 @@ func (s *WatchableService) WatchMachineReboot(ctx context.Context, uuid string) 
 
 func (s *WatchableService) machineToCareForReboot(ctx context.Context, uuid string) ([]string, error) {
 	parentUUID, err := s.st.GetMachineParentUUID(ctx, uuid)
-	if err != nil && !errors.Is(err, machineerrors.MachineHasNoParent) {
-		return nil, errors.Trace(err)
+	if err != nil && !interrors.Is(err, machineerrors.MachineHasNoParent) {
+		return nil, interrors.Capture(err)
 	}
-	if errors.Is(err, machineerrors.MachineHasNoParent) {
+	if interrors.Is(err, machineerrors.MachineHasNoParent) {
 		return []string{uuid}, nil
 	}
 	return []string{uuid, parentUUID}, nil

@@ -5,16 +5,16 @@ package state
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/canonical/sqlair"
 	"github.com/juju/collections/transform"
-	"github.com/juju/errors"
 
 	"github.com/juju/juju/core/annotations"
 	"github.com/juju/juju/core/database"
+	coreerrors "github.com/juju/juju/core/errors"
 	"github.com/juju/juju/domain"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State represents a type for interacting with the underlying state.
@@ -35,13 +35,13 @@ func NewState(factory database.TxnRunnerFactory) *State {
 func (st *State) GetAnnotations(ctx context.Context, id annotations.ID) (map[string]string, error) {
 	getAnnotationsQuery, err := getAnnotationQueryForID(id)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.Capture(err)
 	}
 
 	annotationUUIDParam := annotationUUID{}
 	getAnnotationsStmt, err := st.Prepare(getAnnotationsQuery, Annotation{}, annotationUUIDParam)
 	if err != nil {
-		return nil, errors.Annotatef(err, "preparing get annotations query for ID: %q", id.Name)
+		return nil, errors.Errorf("preparing get annotations query for ID: %q %w", id.Name, err)
 	}
 
 	if id.Kind == annotations.KindModel {
@@ -59,7 +59,7 @@ func (st *State) GetAnnotations(ctx context.Context, id annotations.ID) (map[str
 func (st *State) getAnnotationsForModel(ctx context.Context, id annotations.ID, getAnnotationsStmt *sqlair.Statement) (map[string]string, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.Capture(err)
 	}
 
 	var annotationsResults []Annotation
@@ -71,7 +71,7 @@ func (st *State) getAnnotationsForModel(ctx context.Context, id annotations.ID, 
 		return err
 	})
 	if err != nil {
-		return nil, errors.Annotatef(err, "loading annotations for ID: %q", id.Name)
+		return nil, errors.Errorf("loading annotations for ID: %q %w", id.Name, err)
 	}
 
 	annotations := transform.SliceToMap(annotationsResults, func(a Annotation) (string, string) { return a.Key, a.Value })
@@ -88,26 +88,26 @@ func (st *State) getAnnotationsForModel(ctx context.Context, id annotations.ID, 
 func (st *State) getAnnotationsForID(ctx context.Context, id annotations.ID, getAnnotationsStmt *sqlair.Statement, annotationUUIDParam annotationUUID) (map[string]string, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.Capture(err)
 	}
 
 	kindQuery, kindQueryParam, err := uuidQueryForID(id)
 	if err != nil {
-		return nil, errors.Annotatef(err, "preparing get annotations query for ID: %q", id.Name)
+		return nil, errors.Errorf("preparing get annotations query for ID: %q %w", id.Name, err)
 	}
 	kindQueryStmt, err := st.Prepare(kindQuery, kindQueryParam, annotationUUIDParam)
 	if err != nil {
-		return nil, errors.Annotatef(err, "preparing get annotations query for ID: %q", id.Name)
+		return nil, errors.Errorf("preparing get annotations query for ID: %q %w", id.Name, err)
 	}
 
 	var annotationsResults []Annotation
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, kindQueryStmt, kindQueryParam).Get(&annotationUUIDParam)
 		if errors.Is(err, sqlair.ErrNoRows) {
-			return fmt.Errorf("unable to find UUID for ID: %q %w", id.Name, errors.NotFound)
+			return errors.Errorf("unable to find UUID for ID: %q %w", id.Name, coreerrors.NotFound)
 		}
 		if err != nil {
-			return errors.Annotatef(err, "looking up UUID for ID: %s", id.Name)
+			return errors.Errorf("looking up UUID for ID: %s %w", id.Name, err)
 		}
 
 		err = tx.Query(ctx, getAnnotationsStmt, annotationUUIDParam).GetAll(&annotationsResults)
@@ -117,14 +117,14 @@ func (st *State) getAnnotationsForID(ctx context.Context, id annotations.ID, get
 		return err
 	})
 	if err != nil {
-		return nil, errors.Annotatef(err, "loading annotations for ID: %q", id.Name)
+		return nil, errors.Errorf("loading annotations for ID: %q %w", id.Name, err)
 	}
 
 	annotations := transform.SliceToMap(annotationsResults, func(a Annotation) (string, string) {
 		return a.Key, a.Value
 	})
 
-	return annotations, errors.Trace(err)
+	return annotations, errors.Capture(err)
 }
 
 // SetAnnotations associates key/value annotation pairs with a given ID.
@@ -149,22 +149,22 @@ func (st *State) SetAnnotations(
 
 	setAnnotationsQuery, err := setAnnotationQueryForID(id)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	deleteAnnotationsQuery, err := deleteAnnotationsQueryForID(id)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	annotationUUIDParam := annotationUUID{}
 	annotationParam := Annotation{}
 	setAnnotationsStmt, err := st.Prepare(setAnnotationsQuery, annotationParam, annotationUUIDParam)
 	if err != nil {
-		return errors.Annotatef(err, "preparing set annotations query for ID: %q", id.Name)
+		return errors.Errorf("preparing set annotations query for ID: %q %w", id.Name, err)
 	}
 	deleteAnnotationsStmt, err := st.Prepare(deleteAnnotationsQuery, annotationUUIDParam)
 	if err != nil {
-		return errors.Annotatef(err, "preparing set annotations query for ID: %q", id.Name)
+		return errors.Errorf("preparing set annotations query for ID: %q %w", id.Name, err)
 	}
 
 	if id.Kind == annotations.KindModel {
@@ -187,42 +187,42 @@ func (st *State) setAnnotationsForID(ctx context.Context, id annotations.ID,
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	kindQuery, kindQueryParam, err := uuidQueryForID(id)
 	if err != nil {
-		return errors.Annotatef(err, "preparing uuid retrieval query for ID: %q", id.Name)
+		return errors.Errorf("preparing uuid retrieval query for ID: %q %w", id.Name, err)
 	}
 	kindQueryStmt, err := st.Prepare(kindQuery, annotationUUIDParam, kindQueryParam)
 	if err != nil {
-		return errors.Annotatef(err, "preparing uuid retrieval query for ID: %q", id.Name)
+		return errors.Errorf("preparing uuid retrieval query for ID: %q %w", id.Name, err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err = tx.Query(ctx, kindQueryStmt, kindQueryParam).Get(&annotationUUIDParam)
 		if err != nil {
 			if errors.Is(err, sqlair.ErrNoRows) {
-				return fmt.Errorf("unable to find UUID for ID: %q %w", id.Name, errors.NotFound)
+				return errors.Errorf("unable to find UUID for ID: %q %w", id.Name, coreerrors.NotFound)
 			}
-			return errors.Annotatef(err, "looking up UUID for ID: %s", id.Name)
+			return errors.Errorf("looking up UUID for ID: %s %w", id.Name, err)
 		}
 
 		if err := tx.Query(ctx, deleteAnnotationsStmt, annotationUUIDParam).Run(); err != nil {
-			return errors.Annotatef(err, "unsetting annotations for ID: %s", id.Name)
+			return errors.Errorf("unsetting annotations for ID: %s %w", id.Name, err)
 		}
 
 		for key, value := range toInsert {
 			annotationParam.Key = key
 			annotationParam.Value = value
 			if err := tx.Query(ctx, setAnnotationsStmt, annotationUUIDParam, annotationParam).Run(); err != nil {
-				return errors.Annotatef(err, "setting annotations for ID: %s", id.Name)
+				return errors.Errorf("setting annotations for ID: %s %w", id.Name, err)
 			}
 		}
 		return nil
 	})
 
-	return errors.Annotatef(err, "setting annotations for ID: %q", id.Name)
+	return errors.Errorf("setting annotations for ID: %q %w", id.Name, err)
 }
 
 // setAnnotationsForModel associates key/value annotation pairs with the model
@@ -238,23 +238,23 @@ func (st *State) setAnnotationsForModel(ctx context.Context, id annotations.ID,
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		if err := tx.Query(ctx, deleteAnnotationsStmt).Run(); err != nil {
-			return errors.Annotatef(err, "unsetting annotations for ID: %s", id.Name)
+			return errors.Errorf("unsetting annotations for ID: %s %w", id.Name, err)
 		}
 
 		for key, value := range toInsert {
 			annotationParam.Key = key
 			annotationParam.Value = value
 			if err := tx.Query(ctx, setAnnotationsStmt, annotationParam).Run(); err != nil {
-				return errors.Annotatef(err, "setting annotations for ID: %s", id.Name)
+				return errors.Errorf("setting annotations for ID: %s %w", id.Name, err)
 			}
 		}
 		return nil
 	})
 
-	return errors.Annotatef(err, "setting annotations for model with uuid: %q", id.Name)
+	return errors.Errorf("setting annotations for model with uuid: %q %w", id.Name, err)
 }

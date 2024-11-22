@@ -5,15 +5,14 @@ package state
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/canonical/sqlair"
-	"github.com/juju/errors"
 
 	"github.com/juju/juju/core/database"
 	"github.com/juju/juju/core/model"
 	"github.com/juju/juju/domain"
 	modelerrors "github.com/juju/juju/domain/model/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // State is responsible for accessing the controller/model DB to retrieve the
@@ -43,7 +42,7 @@ func (s *State) GetModelConfigKeyValues(
 
 	db, err := s.DB()
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	input := make(sqlair.S, 0, len(keys))
@@ -58,21 +57,21 @@ WHERE key in ($S[:])
 `, input, modelConfigRow{})
 
 	if err != nil {
-		return nil, fmt.Errorf(
-			"preparing get model config key values: %w", domain.CoerceError(err),
-		)
+		return nil, interrors.Errorf(
+			"preparing get model config key values: %w", domain.CoerceError(err))
+
 	}
 
 	result := make([]modelConfigRow, 0, len(keys))
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt, &input).GetAll(&result)
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		} else if err != nil {
-			return fmt.Errorf(
+			return interrors.Errorf(
 				"getting model config key values: %w",
-				domain.CoerceError(err),
-			)
+				domain.CoerceError(err))
+
 		}
 		return nil
 	})
@@ -93,7 +92,7 @@ WHERE key in ($S[:])
 func (s *State) ModelID(ctx context.Context) (model.UUID, error) {
 	db, err := s.DB()
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 
 	stmt, err := s.Prepare(`
@@ -102,9 +101,9 @@ FROM model
 `, modelInfo{})
 
 	if err != nil {
-		return "", fmt.Errorf(
-			"preparing get model statement: %w", domain.CoerceError(err),
-		)
+		return "", interrors.Errorf(
+			"preparing get model statement: %w", domain.CoerceError(err))
+
 	}
 
 	result := make([]modelInfo, 0, 1)
@@ -112,7 +111,7 @@ FROM model
 		return tx.Query(ctx, stmt).GetAll(&result)
 	})
 
-	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+	if err != nil && !interrors.Is(err, sqlair.ErrNoRows) {
 		return "", modelerrors.NotFound
 	}
 	if len(result) == 0 {

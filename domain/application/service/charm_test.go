@@ -6,7 +6,6 @@ package service
 import (
 	"context"
 
-	"github.com/juju/errors"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/worker/v4/workertest"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/juju/juju/core/changestream"
 	charmtesting "github.com/juju/juju/core/charm/testing"
+	coreerrors "github.com/juju/juju/core/errors"
 	domaincharm "github.com/juju/juju/domain/application/charm"
 	applicationerrors "github.com/juju/juju/domain/application/errors"
 	internalcharm "github.com/juju/juju/internal/charm"
@@ -95,7 +95,7 @@ func (s *charmServiceSuite) TestIsControllerCharmInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, err := s.service.IsControllerCharm(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestIsCharmAvailable(c *gc.C) {
@@ -125,7 +125,7 @@ func (s *charmServiceSuite) TestIsCharmAvailableInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, err := s.service.IsCharmAvailable(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestSupportsContainers(c *gc.C) {
@@ -155,7 +155,7 @@ func (s *charmServiceSuite) TestSupportsContainersInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, err := s.service.SupportsContainers(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestGetCharm(c *gc.C) {
@@ -206,7 +206,7 @@ func (s *charmServiceSuite) TestGetCharmInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, _, err := s.service.GetCharm(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestGetCharmMetadata(c *gc.C) {
@@ -248,7 +248,7 @@ func (s *charmServiceSuite) TestGetCharmMetadataInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, err := s.service.GetCharmMetadata(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestGetCharmLXDProfile(c *gc.C) {
@@ -289,7 +289,7 @@ func (s *charmServiceSuite) TestGetCharmLXDProfileInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, _, err := s.service.GetCharmLXDProfile(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestGetCharmMetadataName(c *gc.C) {
@@ -319,7 +319,7 @@ func (s *charmServiceSuite) TestGetCharmMetadataNameInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, err := s.service.GetCharmMetadataName(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestGetCharmMetadataDescription(c *gc.C) {
@@ -349,7 +349,7 @@ func (s *charmServiceSuite) TestGetCharmMetadataDescriptionInvalidUUID(c *gc.C) 
 	defer s.setupMocks(c).Finish()
 
 	_, err := s.service.GetCharmMetadataDescription(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestGetCharmArchivePath(c *gc.C) {
@@ -379,7 +379,7 @@ func (s *charmServiceSuite) TestGetCharmArchivePathInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, err := s.service.GetCharmArchivePath(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestSetCharmAvailable(c *gc.C) {
@@ -408,7 +408,7 @@ func (s *charmServiceSuite) TestSetCharmAvailableInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	err := s.service.SetCharmAvailable(context.Background(), "")
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestReserveCharmRevision(c *gc.C) {
@@ -440,7 +440,7 @@ func (s *charmServiceSuite) TestReserveCharmRevisionInvalidUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	_, err := s.service.ReserveCharmRevision(context.Background(), "", 21)
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 func (s *charmServiceSuite) TestReserveCharmRevisionInvalidRevision(c *gc.C) {

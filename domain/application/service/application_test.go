@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/juju/clock/testclock"
-	jujuerrors "github.com/juju/errors"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/version/v2"
@@ -19,6 +18,7 @@ import (
 	"github.com/juju/juju/core/assumes"
 	corecharm "github.com/juju/juju/core/charm"
 	charmtesting "github.com/juju/juju/core/charm/testing"
+	coreerrors "github.com/juju/juju/core/errors"
 	"github.com/juju/juju/core/model"
 	corestorage "github.com/juju/juju/core/storage"
 	coreunit "github.com/juju/juju/core/unit"
@@ -1150,7 +1150,7 @@ func (s *providerApplicationServiceSuite) TestGetSupportedFeatures(c *gc.C) {
 
 func (s *providerApplicationServiceSuite) TestGetSupportedFeaturesNotSupported(c *gc.C) {
 	ctrl := s.setupMocks(c, func(ctx context.Context) (Provider, error) {
-		return s.provider, jujuerrors.NotSupported
+		return s.provider, coreerrors.NotSupported
 	})
 	defer ctrl.Finish()
 

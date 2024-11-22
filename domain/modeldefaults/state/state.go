@@ -8,10 +8,10 @@ import (
 	"database/sql"
 
 	"github.com/canonical/sqlair"
-	"github.com/juju/errors"
 
 	"github.com/juju/juju/core/cloud"
 	coredatabase "github.com/juju/juju/core/database"
+	coreerrors "github.com/juju/juju/core/errors"
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/domain"
 	clouderrors "github.com/juju/juju/domain/cloud/errors"
@@ -55,7 +55,7 @@ func (s *State) CloudDefaults(
 
 	db, err := s.DB()
 	if err != nil {
-		return rval, errors.Trace(err)
+		return rval, interrors.Capture(err)
 	}
 
 	cloudUUID := cloudUUID{UUID: uuid.String()}
@@ -71,13 +71,13 @@ WHERE cloud_defaults.cloud_uuid = $cloudUUID.uuid
 	var kvs []keyValue
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, cloudDefaultsStmt, cloudUUID).GetAll(&kvs)
-		if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+		if err != nil && !interrors.Is(err, sqlair.ErrNoRows) {
 			return interrors.Errorf("fetching cloud defaults for model %q: %w", uuid, err)
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	for _, kv := range kvs {
@@ -92,7 +92,7 @@ WHERE cloud_defaults.cloud_uuid = $cloudUUID.uuid
 func (s *State) ModelCloudRegionDefaults(ctx context.Context, uuid coremodel.UUID) (map[string]string, error) {
 	db, err := s.DB()
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	model := modelUUID{UUID: uuid.String()}
@@ -105,7 +105,7 @@ LEFT JOIN cloud_region_defaults crd ON crd.region_uuid = cr.uuid
 WHERE m.uuid = $modelUUID.uuid
 `, cloudRegionDefaultValue{}, model)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	result := make(map[string]string)
@@ -115,11 +115,11 @@ WHERE m.uuid = $modelUUID.uuid
 		var regionDefaultValues []cloudRegionDefaultValue
 
 		err := tx.Query(ctx, query, model).GetAll(&regionDefaultValues)
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return interrors.Errorf("model %q not found", uuid).Add(modelerrors.NotFound)
 		}
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 
 		for _, regionDefaultValue := range regionDefaultValues {
@@ -131,7 +131,7 @@ WHERE m.uuid = $modelUUID.uuid
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Annotatef(err, "getting cloud region defaults details for model %q", uuid)
+		return nil, interrors.Errorf("getting cloud region defaults details for model %q %w", uuid, err)
 	}
 	return result, nil
 
@@ -161,7 +161,7 @@ JOIN cloud_region ON cloud_region.uuid = cloud_region_defaults.region_uuid
 WHERE cloud_region.cloud_uuid = $dbCloud.uuid
 `, cloudRegionDefaultValue{}, dbCloud{})
 	if err != nil {
-		return defaults, errors.Trace(err)
+		return defaults, interrors.Capture(err)
 	}
 
 	return defaults, db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
@@ -169,7 +169,7 @@ WHERE cloud_region.cloud_uuid = $dbCloud.uuid
 		var regionDefaultValues []cloudRegionDefaultValue
 
 		if err := tx.Query(ctx, stmt, dbCloud{UUID: cloudUUID.String()}).GetAll(&regionDefaultValues); err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return nil
 			}
 			return interrors.Errorf("fetching cloud %q region defaults: %w", cloudUUID, err)
@@ -196,7 +196,7 @@ func (s *State) CloudType(
 ) (string, error) {
 	db, err := s.DB()
 	if err != nil {
-		return "'", errors.Trace(err)
+		return "'", interrors.Capture(err)
 	}
 
 	cld := dbCloud{UUID: uuid.String()}
@@ -215,7 +215,7 @@ WHERE c.uuid = $dbCloud.uuid
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt, cld).Get(&result)
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return interrors.Errorf(
 				"cannot get cloud type for cloud %q because cloud does not exist",
 				uuid,
@@ -246,7 +246,7 @@ func (s *State) ModelMetadataDefaults(
 ) (map[string]string, error) {
 	db, err := s.DB()
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	modelUUID := modelUUID{UUID: uuid.String()}
@@ -264,7 +264,7 @@ WHERE m.uuid = $modelUUID.uuid
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt, modelUUID).Get(&result)
-		if errors.Is(err, sql.ErrNoRows) {
+		if interrors.Is(err, sql.ErrNoRows) {
 			return interrors.Errorf("%w for uuid %q", modelerrors.NotFound, uuid)
 		} else if err != nil {
 			return interrors.Errorf(
@@ -276,7 +276,7 @@ WHERE m.uuid = $modelUUID.uuid
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	return map[string]string{
@@ -291,7 +291,7 @@ WHERE m.uuid = $modelUUID.uuid
 func (s *State) GetModelCloudUUID(ctx context.Context, uuid coremodel.UUID) (cloud.UUID, error) {
 	db, err := s.DB()
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 
 	model := modelUUID{UUID: uuid.String()}
@@ -302,19 +302,19 @@ FROM model m
 WHERE m.uuid = $modelUUID.uuid
 `, model, dbCloud{})
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 
 	var cld dbCloud
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, query, model).Get(&cld)
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return interrors.Errorf("model %q not found", uuid).Add(modelerrors.NotFound)
 		}
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
-		return "", errors.Annotatef(err, "getting cloud UUID for model %q", uuid)
+		return "", interrors.Errorf("getting cloud UUID for model %q %w", uuid, err)
 	}
 	return cloud.UUID(cld.UUID), nil
 }
@@ -324,7 +324,7 @@ WHERE m.uuid = $modelUUID.uuid
 func (s *State) GetCloudUUID(ctx context.Context, cloudName string) (cloud.UUID, error) {
 	db, err := s.DB()
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 	cld := dbCloud{Name: cloudName}
 	query, err := s.Prepare(`
@@ -333,17 +333,17 @@ FROM cloud c
 WHERE c.name = $dbCloud.name
 `, cld)
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, query, cld).Get(&cld)
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return interrors.Errorf("cloud %q not found", cloudName).Add(clouderrors.NotFound)
 		}
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	})
-	return cloud.UUID(cld.UUID), errors.Annotatef(err, "getting cloud UUID for %q", cloudName)
+	return cloud.UUID(cld.UUID), interrors.Errorf("getting cloud UUID for %q %w", cloudName, err)
 }
 
 // UpdateCloudDefaults is responsible for updating default config values for a
@@ -357,7 +357,7 @@ func (s *State) UpdateCloudDefaults(
 ) error {
 	db, err := s.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	cld := dbCloud{UUID: cloudUUID.String()}
@@ -371,7 +371,7 @@ ON CONFLICT(cloud_uuid, key) DO UPDATE
     AND key = excluded.key;
 `, cloudDefaultValue{})
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
@@ -397,7 +397,7 @@ func (s *State) DeleteCloudDefaults(
 ) error {
 	db, err := s.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	cld := dbCloud{UUID: cloudUUID.String()}
@@ -409,7 +409,7 @@ WHERE key IN ($attrs[:])
 AND cloud_uuid = $dbCloud.uuid;
 `, toRemove, cld)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		return tx.Query(ctx, deleteStmt, toRemove, cld).Run()
@@ -432,7 +432,7 @@ func (s *State) UpdateCloudRegionDefaults(
 ) error {
 	db, err := s.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	cld := dbCloud{UUID: cloudUUID.String()}
@@ -445,7 +445,7 @@ WHERE cloud_region.cloud_uuid = $dbCloud.uuid
 AND cloud_region.name = $cloudRegion.name;
 `, region, cld)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	upsertStmt, err := s.Prepare(`
@@ -457,12 +457,12 @@ ON CONFLICT(region_uuid, key) DO UPDATE
     AND key = excluded.key;
 `, cloudRegionDefaultValue{})
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, selectStmt, cld, region).Get(&region)
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return interrors.Errorf(
 				"cloud %q region %q does not exist",
 				cloudUUID, regionName,
@@ -477,7 +477,7 @@ ON CONFLICT(region_uuid, key) DO UPDATE
 			if database.IsErrConstraintForeignKey(err) {
 				return interrors.Errorf("cloud %q not found", cloudUUID).Add(clouderrors.NotFound)
 			} else if err != nil {
-				return errors.Trace(err)
+				return interrors.Capture(err)
 			}
 		}
 		return nil
@@ -505,7 +505,7 @@ func (s *State) DeleteCloudRegionDefaults(
 ) error {
 	db, err := s.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	cld := dbCloud{UUID: cloudUUID.String()}
@@ -518,7 +518,7 @@ WHERE cloud_region.cloud_uuid = $dbCloud.uuid
 AND cloud_region.name = $cloudRegion.name;
 `, region, cld)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	toRemove := attrs(removeAttrs)
@@ -529,13 +529,13 @@ WHERE key IN ($attrs[:])
 AND region_uuid = $cloudRegion.uuid;
 `, toRemove, region)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, selectStmt, cld, region).Get(&region)
-		if errors.Is(err, sqlair.ErrNoRows) {
-			return interrors.Errorf("cloud %q region %q %w", cloudUUID, regionName, errors.NotFound)
+		if interrors.Is(err, sqlair.ErrNoRows) {
+			return interrors.Errorf("cloud %q region %q %w", cloudUUID, regionName, coreerrors.NotFound)
 		} else if err != nil {
 			return interrors.Errorf("fetching cloud %q region %q: %w", cloudUUID, regionName, err)
 		}

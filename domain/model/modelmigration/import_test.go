@@ -7,13 +7,13 @@ import (
 	"context"
 
 	"github.com/juju/description/v8"
-	"github.com/juju/errors"
 	"github.com/juju/names/v5"
 	jc "github.com/juju/testing/checkers"
 	gomock "go.uber.org/mock/gomock"
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/core/credential"
+	coreerrors "github.com/juju/juju/core/errors"
 	coremodel "github.com/juju/juju/core/model"
 	modeltesting "github.com/juju/juju/core/model/testing"
 	"github.com/juju/juju/core/modelmigration"
@@ -25,6 +25,7 @@ import (
 	"github.com/juju/juju/domain/model"
 	modelerrors "github.com/juju/juju/domain/model/errors"
 	"github.com/juju/juju/environs/config"
+	interrors "github.com/juju/juju/internal/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 	"github.com/juju/juju/internal/testing"
 	"github.com/juju/juju/internal/uuid"
@@ -63,7 +64,7 @@ func (i *importSuite) TestModelMetadataInvalid(c *gc.C) {
 		},
 	})
 	err := importOp.Execute(context.Background(), model)
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 
 	// model name of wrong type
 	model = description.NewModel(description.ModelArgs{
@@ -73,7 +74,7 @@ func (i *importSuite) TestModelMetadataInvalid(c *gc.C) {
 		},
 	})
 	err = importOp.Execute(context.Background(), model)
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 
 	// uuid not defined
 	model = description.NewModel(description.ModelArgs{
@@ -82,7 +83,7 @@ func (i *importSuite) TestModelMetadataInvalid(c *gc.C) {
 		},
 	})
 	err = importOp.Execute(context.Background(), model)
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 
 	// uuid of wrong type
 	model = description.NewModel(description.ModelArgs{
@@ -92,7 +93,7 @@ func (i *importSuite) TestModelMetadataInvalid(c *gc.C) {
 		},
 	})
 	err = importOp.Execute(context.Background(), model)
-	c.Assert(err, jc.ErrorIs, errors.NotValid)
+	c.Assert(err, jc.ErrorIs, coreerrors.NotValid)
 }
 
 // TestModelOwnerNoExist is asserting that if we try and import a model where
@@ -234,7 +235,7 @@ func (i *importSuite) TestModelCreateRollbacksOnFailure(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	i.modelService.EXPECT().ImportModel(gomock.Any(), args).Return(activator, nil)
-	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(errors.New("boom"))
+	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(interrors.New("boom"))
 	i.modelService.EXPECT().DeleteModel(gomock.Any(), modelUUID, gomock.Any()).DoAndReturn(func(_ context.Context, _ coremodel.UUID, options ...model.DeleteModelOption) error {
 		opts := model.DefaultDeleteModelOptions()
 		for _, fn := range options {
@@ -321,7 +322,7 @@ func (i *importSuite) TestModelCreateRollbacksOnFailureIgnoreNotFoundModel(c *gc
 	c.Assert(err, jc.ErrorIsNil)
 
 	i.modelService.EXPECT().ImportModel(gomock.Any(), args).Return(activator, nil)
-	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(errors.New("boom"))
+	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(interrors.New("boom"))
 	i.modelService.EXPECT().DeleteModel(gomock.Any(), modelUUID, gomock.Any()).Return(modelerrors.NotFound)
 	i.readOnlyModelService.EXPECT().DeleteModel(gomock.Any()).Return(nil)
 
@@ -401,7 +402,7 @@ func (i *importSuite) TestModelCreateRollbacksOnFailureIgnoreNotFoundReadOnlyMod
 	c.Assert(err, jc.ErrorIsNil)
 
 	i.modelService.EXPECT().ImportModel(gomock.Any(), args).Return(activator, nil)
-	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(errors.New("boom"))
+	i.readOnlyModelService.EXPECT().CreateModel(gomock.Any(), controllerUUID).Return(interrors.New("boom"))
 	i.modelService.EXPECT().DeleteModel(gomock.Any(), modelUUID, gomock.Any()).Return(nil)
 	i.readOnlyModelService.EXPECT().DeleteModel(gomock.Any()).Return(nil)
 

@@ -9,11 +9,11 @@ import (
 	"github.com/canonical/sqlair"
 	"github.com/juju/collections/set"
 	"github.com/juju/collections/transform"
-	jujuerrors "github.com/juju/errors"
 
 	coreapplication "github.com/juju/juju/core/application"
 	coremachine "github.com/juju/juju/core/machine"
 	"github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // WatchOpenedPortsTable returns the name of the table that should be watched
@@ -31,7 +31,7 @@ func (st *State) InitialWatchMachineOpenedPortsStatement() string {
 func (st *State) GetMachineNamesForUnitEndpoints(ctx context.Context, eps []string) ([]coremachine.Name, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, jujuerrors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	endpointUUIDs := endpoints(eps)
@@ -53,7 +53,7 @@ WHERE unit_endpoint.uuid IN ($endpoints[:])
 		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		}
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
 		return nil, errors.Errorf("failed to get machines for endpoints: %w", err)
@@ -67,7 +67,7 @@ WHERE unit_endpoint.uuid IN ($endpoints[:])
 func (st *State) FilterEndpointsForApplication(ctx context.Context, eps []string, app coreapplication.ID) (set.Strings, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, jujuerrors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 
 	applicationUUID := applicationUUID{UUID: app}
@@ -90,7 +90,7 @@ AND unit.application_uuid = $applicationUUID.application_uuid
 		if errors.Is(err, sqlair.ErrNoRows) {
 			return nil
 		}
-		return jujuerrors.Trace(err)
+		return interrors.Capture(err)
 	})
 	if err != nil {
 		return nil, errors.Errorf("failed to get applications for endpoints: %w", err)

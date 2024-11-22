@@ -5,16 +5,15 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	"github.com/juju/errors"
 	"github.com/juju/names/v5"
 
 	"github.com/juju/juju/core/leadership"
 	"github.com/juju/juju/core/secrets"
 	domainsecret "github.com/juju/juju/domain/secret"
 	secreterrors "github.com/juju/juju/domain/secret/errors"
+	"github.com/juju/juju/internal/errors"
 )
 
 // GetSecretGrants returns the subjects which have the specified access to the secret.
@@ -22,7 +21,7 @@ import (
 func (s *SecretService) GetSecretGrants(ctx context.Context, uri *secrets.URI, role secrets.SecretRole) ([]SecretAccess, error) {
 	accessors, err := s.secretState.GetSecretGrants(ctx, uri, role)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.Capture(err)
 	}
 	result := make([]SecretAccess, len(accessors))
 	for i, accessor := range accessors {
@@ -78,7 +77,7 @@ func (s *SecretService) GetSecretAccessScope(ctx context.Context, uri *secrets.U
 	}
 	accessScope, err := s.secretState.GetSecretAccessScope(ctx, uri, ap)
 	if err != nil {
-		return SecretAccessScope{}, errors.Trace(err)
+		return SecretAccessScope{}, errors.Capture(err)
 	}
 	result := SecretAccessScope{
 		ID: accessScope.ScopeID,
@@ -114,7 +113,7 @@ func (s *SecretService) getSecretAccess(ctx context.Context, uri *secrets.URI, a
 	}
 	role, err := s.secretState.GetSecretAccess(ctx, uri, ap)
 	if err != nil {
-		return secrets.RoleNone, errors.Trace(err)
+		return secrets.RoleNone, errors.Capture(err)
 	}
 	// "none" is db value, secret enum is "".
 	if role == "none" {
@@ -130,7 +129,7 @@ func (s *SecretService) getSecretAccess(ctx context.Context, uri *secrets.URI, a
 // It returns [secreterrors.PermissionDenied] if the secret cannot be managed by the accessor.
 func (s *SecretService) GrantSecretAccess(ctx context.Context, uri *secrets.URI, params SecretAccessParams) error {
 	if err := s.canManage(ctx, uri, params.Accessor, params.LeaderToken); err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	return s.secretState.GrantAccess(ctx, uri, grantParams(params))
 }
@@ -169,7 +168,7 @@ func grantParams(in SecretAccessParams) domainsecret.GrantParams {
 // It returns an error satisfying [secreterrors.SecretNotFound] if the secret is not found.
 func (s *SecretService) RevokeSecretAccess(ctx context.Context, uri *secrets.URI, params SecretAccessParams) error {
 	if err := s.canManage(ctx, uri, params.Accessor, params.LeaderToken); err != nil {
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 
 	p := domainsecret.AccessParams{
@@ -199,7 +198,7 @@ func (s *SecretService) canManage(
 	hasRole, err := s.getSecretAccess(ctx, uri, assessor)
 	if err != nil {
 		// Typically not found error.
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	if hasRole.Allowed(secrets.RoleManage) {
 		return nil
@@ -217,14 +216,14 @@ func (s *SecretService) canManage(
 			})
 			if err != nil {
 				// Typically not found error.
-				return errors.Trace(err)
+				return errors.Capture(err)
 			}
 			if hasRole.Allowed(secrets.RoleManage) {
 				return nil
 			}
 		}
 	}
-	return fmt.Errorf("%q is not allowed to manage this secret%w", assessor.ID, errors.Hide(secreterrors.PermissionDenied))
+	return errors.Errorf("%q is not allowed to manage this secret%w", assessor.ID).Add(secreterrors.PermissionDenied)
 }
 
 // canRead checks that the accessor can read the secret.
@@ -233,13 +232,13 @@ func (s *SecretService) canRead(ctx context.Context, uri *secrets.URI, accessor 
 	hasRole, err := s.getSecretAccess(ctx, uri, accessor)
 	if err != nil {
 		// Typically not found error.
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	if hasRole.Allowed(secrets.RoleView) {
 		return nil
 	}
 
-	notAllowedErr := fmt.Errorf("%q is not allowed to read this secret%w", accessor.ID, errors.Hide(secreterrors.PermissionDenied))
+	notAllowedErr := errors.Errorf("%q is not allowed to read this secret%w", accessor.ID).Add(secreterrors.PermissionDenied)
 
 	if accessor.Kind != UnitAccessor {
 		return notAllowedErr
@@ -258,7 +257,7 @@ func (s *SecretService) canRead(ctx context.Context, uri *secrets.URI, accessor 
 	})
 	if err != nil {
 		// Typically not found error.
-		return errors.Trace(err)
+		return errors.Capture(err)
 	}
 	if hasRole.Allowed(secrets.RoleView) {
 		return nil

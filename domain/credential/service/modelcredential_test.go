@@ -6,7 +6,6 @@ package service
 import (
 	"context"
 
-	"github.com/juju/errors"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"go.uber.org/mock/gomock"
@@ -15,6 +14,7 @@ import (
 	"github.com/juju/juju/caas"
 	"github.com/juju/juju/cloud"
 	corecredential "github.com/juju/juju/core/credential"
+	coreerrors "github.com/juju/juju/core/errors"
 	"github.com/juju/juju/core/instance"
 	"github.com/juju/juju/core/machine"
 	usertesting "github.com/juju/juju/core/user/testing"
@@ -22,6 +22,7 @@ import (
 	"github.com/juju/juju/environs"
 	"github.com/juju/juju/environs/envcontext"
 	"github.com/juju/juju/environs/instances"
+	interrors "github.com/juju/juju/internal/errors"
 	jujutesting "github.com/juju/juju/internal/testing"
 )
 
@@ -135,7 +136,7 @@ func (s *CheckMachinesSuite) TestCheckMachinesExtraInstancesWhenMigrating(c *gc.
 func (s *CheckMachinesSuite) TestCheckMachinesErrorGettingMachines(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	s.machineState.EXPECT().AllMachines().Return(nil, errors.New("boom"))
+	s.machineState.EXPECT().AllMachines().Return(nil, interrors.New("boom"))
 
 	results, err := checkMachineInstances(context.Background(), s.machineState, s.machineService, s.provider, false)
 	c.Assert(err, gc.ErrorMatches, "boom")
@@ -147,10 +148,10 @@ func (s *CheckMachinesSuite) TestCheckMachinesErrorGettingInstances(c *gc.C) {
 
 	s.machineState.EXPECT().AllMachines().Return([]Machine{s.machine}, nil)
 	s.machineService.EXPECT().GetMachineUUID(gomock.Any(), machine.Name(s.machine.Id())).Return("deadbeef", nil)
-	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef").Return("", errors.New("kaboom"))
+	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef").Return("", interrors.New("kaboom"))
 
 	s.provider.allInstancesFunc = func(ctx envcontext.ProviderCallContext) ([]instances.Instance, error) {
-		return nil, errors.New("kaboom")
+		return nil, interrors.New("kaboom")
 	}
 
 	results, err := checkMachineInstances(context.Background(), s.machineState, s.machineService, s.provider, false)
@@ -190,7 +191,7 @@ func (s *CheckMachinesSuite) TestCheckMachinesHandlesManualFailure(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	machine1 := createTestMachine("2", "")
-	machine1.manualFunc = func() (bool, error) { return false, errors.New("manual retrieval failure") }
+	machine1.manualFunc = func() (bool, error) { return false, interrors.New("manual retrieval failure") }
 	s.machineState.EXPECT().AllMachines().Return([]Machine{s.machine, machine1}, nil)
 	s.machineService.EXPECT().GetMachineUUID(gomock.Any(), machine.Name(s.machine.Id())).Return("deadbeef", nil)
 	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef").Return("wind-up", nil)
@@ -204,12 +205,12 @@ func (s *CheckMachinesSuite) TestCheckMachinesErrorGettingMachineInstanceId(c *g
 	defer s.setupMocks(c).Finish()
 
 	machine1 := createTestMachine("2", "")
-	machine1.instanceIdFunc = func() (instance.Id, error) { return "", errors.New("retrieval failure") }
+	machine1.instanceIdFunc = func() (instance.Id, error) { return "", interrors.New("retrieval failure") }
 	s.machineState.EXPECT().AllMachines().Return([]Machine{s.machine, machine1}, nil)
 	s.machineService.EXPECT().GetMachineUUID(gomock.Any(), machine.Name(s.machine.Id())).Return("deadbeef", nil)
 	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef").Return("wind-up", nil)
 	s.machineService.EXPECT().GetMachineUUID(gomock.Any(), machine.Name(machine1.Id())).Return("deadbeef-1", nil)
-	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef-1").Return("", errors.New("retrieval failure"))
+	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef-1").Return("", interrors.New("retrieval failure"))
 
 	results, err := checkMachineInstances(context.Background(), s.machineState, s.machineService, s.provider, false)
 	c.Assert(err, jc.ErrorIsNil)
@@ -221,13 +222,13 @@ func (s *CheckMachinesSuite) TestCheckMachinesErrorGettingMachineInstanceIdNonFa
 	defer s.setupMocks(c).Finish()
 
 	machine1 := createTestMachine("2", "")
-	machine1.instanceIdFunc = func() (instance.Id, error) { return "", errors.New("retrieval failure") }
+	machine1.instanceIdFunc = func() (instance.Id, error) { return "", interrors.New("retrieval failure") }
 	s.machine.instanceIdFunc = machine1.instanceIdFunc
 	s.machineState.EXPECT().AllMachines().Return([]Machine{s.machine, machine1}, nil)
 	s.machineService.EXPECT().GetMachineUUID(gomock.Any(), machine.Name(s.machine.Id())).Return("deadbeef", nil)
-	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef").Return("", errors.New("retrieval failure"))
+	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef").Return("", interrors.New("retrieval failure"))
 	s.machineService.EXPECT().GetMachineUUID(gomock.Any(), machine.Name(machine1.Id())).Return("deadbeef-1", nil)
-	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef-1").Return("", errors.New("retrieval failure"))
+	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef-1").Return("", interrors.New("retrieval failure"))
 
 	results, err := checkMachineInstances(context.Background(), s.machineState, s.machineService, s.provider, false)
 	c.Assert(err, jc.ErrorIsNil)
@@ -240,13 +241,13 @@ func (s *CheckMachinesSuite) TestCheckMachinesErrorGettingMachineInstanceIdNonFa
 	defer s.setupMocks(c).Finish()
 
 	machine1 := createTestMachine("2", "")
-	machine1.instanceIdFunc = func() (instance.Id, error) { return "", errors.New("retrieval failure") }
+	machine1.instanceIdFunc = func() (instance.Id, error) { return "", interrors.New("retrieval failure") }
 	s.machine.instanceIdFunc = machine1.instanceIdFunc
 	s.machineState.EXPECT().AllMachines().Return([]Machine{s.machine, machine1}, nil)
 	s.machineService.EXPECT().GetMachineUUID(gomock.Any(), machine.Name(s.machine.Id())).Return("deadbeef", nil)
-	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef").Return("", errors.New("retrieval failure"))
+	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef").Return("", interrors.New("retrieval failure"))
 	s.machineService.EXPECT().GetMachineUUID(gomock.Any(), machine.Name(machine1.Id())).Return("deadbeef-1", nil)
-	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef-1").Return("", errors.New("retrieval failure"))
+	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef-1").Return("", interrors.New("retrieval failure"))
 
 	results, err := checkMachineInstances(context.Background(), s.machineState, s.machineService, s.provider, true)
 	c.Assert(err, jc.ErrorIsNil)
@@ -262,7 +263,7 @@ func (s *CheckMachinesSuite) TestCheckMachinesNotProvisionedError(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	machine1 := createTestMachine("2", "")
-	machine1.instanceIdFunc = func() (instance.Id, error) { return "", errors.NotProvisionedf("machine 2") }
+	machine1.instanceIdFunc = func() (instance.Id, error) { return "", interrors.Errorf("machine 2 %w", coreerrors.NotProvisioned) }
 	s.machineState.EXPECT().AllMachines().Return([]Machine{s.machine, machine1}, nil)
 	s.machineService.EXPECT().GetMachineUUID(gomock.Any(), machine.Name(s.machine.Id())).Return("deadbeef", nil)
 	s.machineService.EXPECT().InstanceID(gomock.Any(), "deadbeef").Return("wind-up", nil)
@@ -329,7 +330,7 @@ func (s *ModelCredentialSuite) TestValidateNewModelCredentialUnknownModelType(c 
 
 func (s *ModelCredentialSuite) TestOpeningProviderFails(c *gc.C) {
 	s.PatchValue(&newEnv, func(context.Context, environs.OpenParams) (environs.Environ, error) {
-		return nil, errors.New("explosive")
+		return nil, interrors.New("explosive")
 	})
 	results, err := checkIAASModelCredential(context.Background(), s.machineState, s.machineService, environs.OpenParams{}, false)
 	c.Assert(err, gc.ErrorMatches, "explosive")
@@ -372,7 +373,7 @@ func (s *ModelCredentialSuite) TestValidateModelCredentialCloudMismatch(c *gc.C)
 
 func (s *ModelCredentialSuite) TestOpeningCAASBrokerFails(c *gc.C) {
 	s.PatchValue(&newCAASBroker, func(context.Context, environs.OpenParams) (caas.Broker, error) {
-		return nil, errors.New("explosive")
+		return nil, interrors.New("explosive")
 	})
 	results, err := checkCAASModelCredential(context.Background(), environs.OpenParams{})
 	c.Assert(err, gc.ErrorMatches, "explosive")
@@ -382,7 +383,7 @@ func (s *ModelCredentialSuite) TestOpeningCAASBrokerFails(c *gc.C) {
 func (s *ModelCredentialSuite) TestCAASCredentialCheckFailed(c *gc.C) {
 	s.PatchValue(&newCAASBroker, func(context.Context, environs.OpenParams) (caas.Broker, error) {
 		return &mockCaasBroker{
-			namespacesFunc: func() ([]string, error) { return nil, errors.New("fail auth") },
+			namespacesFunc: func() ([]string, error) { return nil, interrors.New("fail auth") },
 		}, nil
 	})
 	results, err := checkCAASModelCredential(context.Background(), environs.OpenParams{})

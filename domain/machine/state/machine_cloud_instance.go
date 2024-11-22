@@ -9,7 +9,6 @@ import (
 
 	"github.com/canonical/sqlair"
 	"github.com/juju/collections/transform"
-	"github.com/juju/errors"
 
 	"github.com/juju/juju/core/instance"
 	"github.com/juju/juju/core/machine"
@@ -19,6 +18,7 @@ import (
 	networkerrors "github.com/juju/juju/domain/network/errors"
 	"github.com/juju/juju/internal/database"
 	internalerrors "github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // HardwareCharacteristics returns the hardware characteristics struct with
@@ -29,7 +29,7 @@ func (st *State) HardwareCharacteristics(
 ) (*instance.HardwareCharacteristics, error) {
 	db, err := st.DB()
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 	query := `
 SELECT    &instanceDataResult.*
@@ -40,18 +40,18 @@ WHERE     v.machine_uuid = $instanceDataResult.machine_uuid`
 	}
 	stmt, err := st.Prepare(query, machineUUIDQuery)
 	if err != nil {
-		return nil, errors.Annotate(err, "preparing retrieve hardware characteristics statement")
+		return nil, interrors.Errorf("preparing retrieve hardware characteristics statement %w", err)
 	}
 
 	var row instanceDataResult
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt, machineUUIDQuery).Get(&row)
-		if errors.Is(err, sql.ErrNoRows) {
-			return errors.Annotatef(machineerrors.NotProvisioned, "machine: %q", machineUUID)
+		if interrors.Is(err, sql.ErrNoRows) {
+			return interrors.Errorf("machine: %q %w", machineUUID, machineerrors.NotProvisioned)
 		}
-		return errors.Annotatef(err, "querying machine cloud instance for machine %q", machineUUID)
+		return interrors.Errorf("querying machine cloud instance for machine %q %w", machineUUID, err)
 	}); err != nil {
-		return nil, errors.Trace(err)
+		return nil, interrors.Capture(err)
 	}
 	return row.toHardwareCharacteristics(), nil
 }
@@ -65,7 +65,7 @@ func (st *State) AvailabilityZone(
 ) (string, error) {
 	db, err := st.DB()
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 
 	query := `
@@ -77,18 +77,18 @@ WHERE     v.machine_uuid = $instanceDataResult.machine_uuid`
 	}
 	stmt, err := st.Prepare(query, machineUUIDQuery)
 	if err != nil {
-		return "", errors.Annotate(err, "preparing retrieve hardware characteristics statement")
+		return "", interrors.Errorf("preparing retrieve hardware characteristics statement %w", err)
 	}
 
 	var row instanceDataResult
 	if err := db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		err := tx.Query(ctx, stmt, machineUUIDQuery).Get(&row)
-		if errors.Is(err, sql.ErrNoRows) {
-			return errors.Annotatef(machineerrors.AvailabilityZoneNotFound, "machine cloud instance for machine %q", machineUUID)
+		if interrors.Is(err, sql.ErrNoRows) {
+			return interrors.Errorf("machine cloud instance for machine %q %w", machineUUID, machineerrors.AvailabilityZoneNotFound)
 		}
-		return errors.Annotatef(err, "querying machine cloud instance for machine %q", machineUUID)
+		return interrors.Errorf("querying machine cloud instance for machine %q %w", machineUUID, err)
 	}); err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 	if row.AvailabilityZone == nil {
 		return "", nil
@@ -107,7 +107,7 @@ func (st *State) SetMachineCloudInstance(
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	setInstanceData := `
@@ -116,7 +116,7 @@ VALUES ($instanceData.*)
 `
 	setInstanceDataStmt, err := st.Prepare(setInstanceData, instanceData{})
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	setInstanceTags := `
@@ -125,7 +125,7 @@ VALUES ($instanceTag.*)
 `
 	setInstanceTagStmt, err := st.Prepare(setInstanceTags, instanceTag{})
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	azName := availabilityZoneName{}
@@ -140,7 +140,7 @@ WHERE  availability_zone.name = $availabilityZoneName.name
 `
 	retrieveAZUUIDStmt, err := st.Prepare(retrieveAZUUID, azName)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
@@ -160,7 +160,7 @@ WHERE  availability_zone.name = $availabilityZoneName.name
 			if hardwareCharacteristics.AvailabilityZone != nil && *hardwareCharacteristics.AvailabilityZone != "" {
 				azUUID := availabilityZoneName{}
 				if err := tx.Query(ctx, retrieveAZUUIDStmt, azName).Get(&azUUID); err != nil {
-					if errors.Is(err, sql.ErrNoRows) {
+					if interrors.Is(err, sql.ErrNoRows) {
 						return internalerrors.Errorf("%w %q for machine %q", networkerrors.AvailabilityZoneNotFound, *hardwareCharacteristics.AvailabilityZone, machineUUID)
 					}
 					return internalerrors.Errorf("cannot retrieve availability zone %q for machine uuid %q: %w", *hardwareCharacteristics.AvailabilityZone, machineUUID, err)
@@ -172,11 +172,11 @@ WHERE  availability_zone.name = $availabilityZoneName.name
 			if database.IsErrConstraintPrimaryKey(err) {
 				return internalerrors.Errorf("%w for machine %q", machineerrors.MachineCloudInstanceAlreadyExists, machineUUID)
 			}
-			return errors.Annotatef(err, "inserting machine cloud instance for machine %q", machineUUID)
+			return interrors.Errorf("inserting machine cloud instance for machine %q %w", machineUUID, err)
 		}
 		if instanceTags := tagsFromHardwareCharacteristics(machineUUID, hardwareCharacteristics); len(instanceTags) > 0 {
 			if err := tx.Query(ctx, setInstanceTagStmt, instanceTags).Run(); err != nil {
-				return errors.Annotatef(err, "inserting instance tags for machine %q", machineUUID)
+				return interrors.Errorf("inserting instance tags for machine %q %w", machineUUID, err)
 			}
 		}
 		return nil
@@ -192,7 +192,7 @@ func (st *State) DeleteMachineCloudInstance(
 ) error {
 	db, err := st.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	// Prepare query for deleting machine cloud instance.
@@ -205,7 +205,7 @@ WHERE machine_uuid=$machineUUID.uuid
 	}
 	deleteInstanceStmt, err := st.Prepare(deleteInstanceQuery, machineUUIDParam)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	// Prepare query for deleting instance tags.
@@ -215,44 +215,44 @@ WHERE machine_uuid=$machineUUID.uuid
 `
 	deleteInstanceTagStmt, err := st.Prepare(deleteInstanceTagsQuery, machineUUIDParam)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	// Prepare query for deleting cloud instance status.
 	deleteInstanceStatusQuery := `DELETE FROM machine_cloud_instance_status WHERE machine_uuid=$machineUUID.uuid`
 	deleteInstanceStatusStmt, err := st.Prepare(deleteInstanceStatusQuery, machineUUIDParam)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	// Prepare query for deleting cloud instance status data.
 	deleteInstanceStatusDataQuery := `DELETE FROM machine_cloud_instance_status_data WHERE machine_uuid=$machineUUID.uuid`
 	deleteInstanceStatusDataStmt, err := st.Prepare(deleteInstanceStatusDataQuery, machineUUIDParam)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		// Delete the machine cloud instance status data. No need to return
 		// error if no status data is set for the instance while deleting.
-		if err := tx.Query(ctx, deleteInstanceStatusDataStmt, machineUUIDParam).Run(); err != nil && !errors.Is(err, sqlair.ErrNoRows) {
-			return errors.Annotatef(domain.CoerceError(err), "deleting machine cloud instance status data for machine %q", mUUID)
+		if err := tx.Query(ctx, deleteInstanceStatusDataStmt, machineUUIDParam).Run(); err != nil && !interrors.Is(err, sqlair.ErrNoRows) {
+			return interrors.Errorf("deleting machine cloud instance status data for machine %q %w", mUUID, domain.CoerceError(err))
 		}
 
 		// Delete the machine cloud instance status. No need to return error if
 		// no status is set for the instance while deleting.
-		if err := tx.Query(ctx, deleteInstanceStatusStmt, machineUUIDParam).Run(); err != nil && !errors.Is(err, sqlair.ErrNoRows) {
-			return errors.Annotatef(domain.CoerceError(err), "deleting machine cloud instance status for machine %q", mUUID)
+		if err := tx.Query(ctx, deleteInstanceStatusStmt, machineUUIDParam).Run(); err != nil && !interrors.Is(err, sqlair.ErrNoRows) {
+			return interrors.Errorf("deleting machine cloud instance status for machine %q %w", mUUID, domain.CoerceError(err))
 		}
 
 		// Delete the machine cloud instance.
 		if err := tx.Query(ctx, deleteInstanceStmt, machineUUIDParam).Run(); err != nil {
-			return errors.Annotatef(domain.CoerceError(err), "deleting machine cloud instance for machine %q", mUUID)
+			return interrors.Errorf("deleting machine cloud instance for machine %q %w", mUUID, domain.CoerceError(err))
 		}
 
 		// Delete the machine cloud instance tags.
 		if err := tx.Query(ctx, deleteInstanceTagStmt, machineUUIDParam).Run(); err != nil {
-			return errors.Annotatef(domain.CoerceError(err), "deleting instance tags for machine %q", mUUID)
+			return interrors.Errorf("deleting instance tags for machine %q %w", mUUID, domain.CoerceError(err))
 		}
 		return nil
 	})
@@ -264,7 +264,7 @@ WHERE machine_uuid=$machineUUID.uuid
 func (st *State) InstanceID(ctx context.Context, mUUID string) (string, error) {
 	db, err := st.DB()
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 
 	mUUIDParam := machineUUID{UUID: mUUID}
@@ -274,7 +274,7 @@ FROM   machine_cloud_instance
 WHERE  machine_uuid = $machineUUID.uuid;`
 	queryStmt, err := st.Prepare(query, mUUIDParam, instanceID{})
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 
 	var instanceId string
@@ -282,17 +282,17 @@ WHERE  machine_uuid = $machineUUID.uuid;`
 		var result instanceID
 		err := tx.Query(ctx, queryStmt, mUUIDParam).Get(&result)
 		if err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
-				return errors.Annotatef(machineerrors.NotProvisioned, "machine: %q", mUUID)
+			if interrors.Is(err, sqlair.ErrNoRows) {
+				return interrors.Errorf("machine: %q %w", mUUID, machineerrors.NotProvisioned)
 			}
-			return errors.Annotatef(err, "querying instance for machine %q", mUUID)
+			return interrors.Errorf("querying instance for machine %q %w", mUUID, err)
 		}
 
 		instanceId = result.ID
 		return nil
 	})
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", interrors.Capture(err)
 	}
 	return instanceId, nil
 }
@@ -304,7 +304,7 @@ WHERE  machine_uuid = $machineUUID.uuid;`
 func (st *State) InstanceIDAndName(ctx context.Context, mUUID string) (string, string, error) {
 	db, err := st.DB()
 	if err != nil {
-		return "", "", errors.Trace(err)
+		return "", "", interrors.Capture(err)
 	}
 
 	mUUIDParam := machineUUID{UUID: mUUID}
@@ -314,7 +314,7 @@ FROM   machine_cloud_instance
 WHERE  machine_uuid = $machineUUID.uuid;`
 	queryStmt, err := st.Prepare(query, mUUIDParam, instanceIDAndDisplayName{})
 	if err != nil {
-		return "", "", errors.Trace(err)
+		return "", "", interrors.Capture(err)
 	}
 
 	var (
@@ -324,10 +324,10 @@ WHERE  machine_uuid = $machineUUID.uuid;`
 		var result instanceIDAndDisplayName
 		err := tx.Query(ctx, queryStmt, mUUIDParam).Get(&result)
 		if err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
-				return errors.Annotatef(machineerrors.NotProvisioned, "machine: %q", mUUID)
+			if interrors.Is(err, sqlair.ErrNoRows) {
+				return interrors.Errorf("machine: %q %w", mUUID, machineerrors.NotProvisioned)
 			}
-			return errors.Annotatef(err, "querying display name for machine %q", mUUID)
+			return interrors.Errorf("querying display name for machine %q %w", mUUID, err)
 		}
 
 		instanceID = result.ID
@@ -335,7 +335,7 @@ WHERE  machine_uuid = $machineUUID.uuid;`
 		return nil
 	})
 	if err != nil {
-		return "", "", errors.Trace(err)
+		return "", "", interrors.Capture(err)
 	}
 	return instanceID, instanceName, nil
 }
@@ -348,7 +348,7 @@ WHERE  machine_uuid = $machineUUID.uuid;`
 func (st *State) GetInstanceStatus(ctx context.Context, mName machine.Name) (status.StatusInfo, error) {
 	db, err := st.DB()
 	if err != nil {
-		return status.StatusInfo{}, errors.Trace(err)
+		return status.StatusInfo{}, interrors.Capture(err)
 	}
 
 	// Prepare query for machine uuid (to be used in
@@ -359,7 +359,7 @@ func (st *State) GetInstanceStatus(ctx context.Context, mName machine.Name) (sta
 	uuidQuery := `SELECT uuid AS &machineUUID.* FROM machine WHERE name = $machineName.name`
 	uuidQueryStmt, err := st.Prepare(uuidQuery, machineNameParam, machineUUID)
 	if err != nil {
-		return status.StatusInfo{}, errors.Trace(err)
+		return status.StatusInfo{}, interrors.Capture(err)
 	}
 
 	// Prepare query for combined machine cloud instance status and the status
@@ -374,7 +374,7 @@ ON st.machine_uuid = st_data.machine_uuid
 WHERE st.machine_uuid = $machineUUID.uuid`
 	statusCombinedQueryStmt, err := st.Prepare(statusCombinedQuery, machineUUID, machineStatusParam)
 	if err != nil {
-		return status.StatusInfo{}, errors.Trace(err)
+		return status.StatusInfo{}, interrors.Capture(err)
 	}
 
 	var instanceStatusWithData machineStatusData
@@ -382,26 +382,26 @@ WHERE st.machine_uuid = $machineUUID.uuid`
 		// Query for the machine uuid
 		err := tx.Query(ctx, uuidQueryStmt, machineNameParam).Get(&machineUUID)
 		if err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return machineerrors.MachineNotFound
 			}
-			return errors.Annotatef(err, "querying uuid for machine %q", mName)
+			return interrors.Errorf("querying uuid for machine %q %w", mName, err)
 		}
 
 		// Query for the machine cloud instance status and status data combined
 		err = tx.Query(ctx, statusCombinedQueryStmt, machineUUID).GetAll(&instanceStatusWithData)
 		if err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
-				return errors.Annotatef(machineerrors.StatusNotSet, "machine: %q", mName)
+			if interrors.Is(err, sqlair.ErrNoRows) {
+				return interrors.Errorf("machine: %q %w", mName, machineerrors.StatusNotSet)
 			}
-			return errors.Annotatef(err, "querying machine status and status data for machine %q", mName)
+			return interrors.Errorf("querying machine status and status data for machine %q %w", mName, err)
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		return status.StatusInfo{}, errors.Trace(err)
+		return status.StatusInfo{}, interrors.Capture(err)
 	}
 
 	// Transform the status data slice into a status.Data map.
@@ -428,7 +428,7 @@ WHERE st.machine_uuid = $machineUUID.uuid`
 func (st *State) SetInstanceStatus(ctx context.Context, mName machine.Name, newStatus status.StatusInfo) error {
 	db, err := st.DB()
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	// Prepare the new status to be set.
@@ -447,7 +447,7 @@ func (st *State) SetInstanceStatus(ctx context.Context, mName machine.Name, newS
 	queryMachine := `SELECT uuid AS &machineUUID.* FROM machine WHERE name = $machineName.name`
 	queryMachineStmt, err := st.Prepare(queryMachine, machineNameParam, mUUID)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	// Prepare query for setting the machine cloud instance status
@@ -459,7 +459,7 @@ VALUES ($machineUUID.uuid, $machineStatusWithData.status_id, $machineStatusWithD
 `
 	statusQueryStmt, err := st.Prepare(statusQuery, mUUID, instanceStatus)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	// Prepare query for setting the machine cloud instance status data
@@ -470,23 +470,23 @@ VALUES ($machineUUID.uuid, $machineStatusWithData.key, $machineStatusWithData.da
 `
 	statusDataQueryStmt, err := st.Prepare(statusDataQuery, mUUID, instanceStatus)
 	if err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	return db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 		// Query for the machine uuid
 		err := tx.Query(ctx, queryMachineStmt, machineNameParam).Get(&mUUID)
 		if err != nil {
-			if errors.Is(err, sqlair.ErrNoRows) {
+			if interrors.Is(err, sqlair.ErrNoRows) {
 				return machineerrors.MachineNotFound
 			}
-			return errors.Annotatef(err, "querying uuid for machine %q", mName)
+			return interrors.Errorf("querying uuid for machine %q %w", mName, err)
 		}
 
 		// Query for setting the machine cloud instance status
 		err = tx.Query(ctx, statusQueryStmt, mUUID, instanceStatus).Run()
 		if err != nil {
-			return errors.Annotatef(err, "setting machine status for machine %q", mName)
+			return interrors.Errorf("setting machine status for machine %q %w", mName, err)
 		}
 
 		// Query for setting the machine cloud instance status data if
@@ -494,7 +494,7 @@ VALUES ($machineUUID.uuid, $machineStatusWithData.key, $machineStatusWithData.da
 		if len(instanceStatusData) > 0 {
 			err = tx.Query(ctx, statusDataQueryStmt, mUUID, instanceStatusData).Run()
 			if err != nil {
-				return errors.Annotatef(err, "setting machine status data for machine %q", mName)
+				return interrors.Errorf("setting machine status data for machine %q %w", mName, err)
 			}
 		}
 		return nil

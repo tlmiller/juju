@@ -5,15 +5,14 @@ package bootstrap
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/canonical/sqlair"
-	"github.com/juju/errors"
 
 	jujucontroller "github.com/juju/juju/controller"
 	"github.com/juju/juju/core/database"
 	coremodel "github.com/juju/juju/core/model"
 	internaldatabase "github.com/juju/juju/internal/database"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // InsertInitialControllerConfig inserts the initial controller configuration
@@ -22,30 +21,30 @@ func InsertInitialControllerConfig(cfg jujucontroller.Config, controllerModelUUI
 	return func(ctx context.Context, controller, model database.TxnRunner) error {
 		values, err := jujucontroller.EncodeToString(cfg)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 
 		if err = controllerModelUUID.Validate(); err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 
 		fields, _, err := jujucontroller.ConfigSchema.ValidationSchema()
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 
 		for k := range values {
 			if field, ok := fields[k]; ok {
 				_, err := field.Coerce(values[k], []string{k})
 				if err != nil {
-					return errors.Annotatef(err, "unable to coerce controller config key %q", k)
+					return interrors.Errorf("unable to coerce controller config key %q %w", k, err)
 				}
 			}
 		}
 
 		insertStmt, err := sqlair.Prepare(`INSERT INTO controller_config (key, value) VALUES ($dbKeyValue.*)`, dbKeyValue{})
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 
 		controllerData := dbController{
@@ -54,7 +53,7 @@ func InsertInitialControllerConfig(cfg jujucontroller.Config, controllerModelUUI
 		}
 		controllerStmt, err := sqlair.Prepare(`INSERT INTO controller (uuid, model_uuid) VALUES ($dbController.*)`, controllerData)
 		if err != nil {
-			return errors.Trace(err)
+			return interrors.Capture(err)
 		}
 
 		updateKeyValues := make([]dbKeyValue, 0)
@@ -68,23 +67,24 @@ func InsertInitialControllerConfig(cfg jujucontroller.Config, controllerModelUUI
 			})
 		}
 
-		return errors.Trace(controller.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		return interrors.Capture(controller.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
 			// Insert the controller data.
 			if err := tx.Query(ctx, controllerStmt, controllerData).Run(); err != nil {
-				return errors.Trace(err)
+				return interrors.Capture(err)
 			}
 
 			// Update the attributes.
 			if len(updateKeyValues) > 0 {
 				if err := tx.Query(ctx, insertStmt, updateKeyValues).Run(); err != nil {
-					return errors.Trace(err)
+					return interrors.Capture(err)
 				}
 			} else {
-				return fmt.Errorf("no controller config values to insert at bootstrap")
+				return interrors.Errorf("no controller config values to insert at bootstrap")
 			}
 
 			return nil
 		}))
+
 	}
 }
 

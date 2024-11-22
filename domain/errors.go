@@ -6,9 +6,8 @@ package domain
 import (
 	"database/sql"
 
-	"github.com/juju/errors"
-
 	"github.com/juju/juju/internal/database"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // CoerceError converts all sql, sqlite and dqlite errors into an error that
@@ -24,7 +23,7 @@ func CoerceError(err error) error {
 	// If the error is a sql error, a dqlite error or a database error, we mask
 	// the error to prevent it from being unwrapped.
 	if isDatabaseError(err) {
-		return errors.Trace(maskError{error: err})
+		return interrors.Capture(maskError{error: err})
 	}
 
 	return err
@@ -48,7 +47,7 @@ func (e maskError) As(target any) bool {
 		return false
 	}
 
-	return errors.As(e.error, target)
+	return interrors.As(e.error, target)
 }
 
 // Is implements standard errors Is interface. Is will check if the target type
@@ -58,13 +57,13 @@ func (e maskError) Is(target error) bool {
 		return false
 	}
 
-	return errors.Is(e.error, target)
+	return interrors.Is(e.error, target)
 }
 
 // isDatabaseError checks if the error is a sql, sqlite or dqlite error.
 func isDatabaseError(err error) bool {
-	return errors.Is(err, sql.ErrNoRows) ||
+	return interrors.Is(err, sql.ErrNoRows) ||
 		database.IsError(err) ||
-		errors.Is(err, sql.ErrTxDone) ||
-		errors.Is(err, sql.ErrConnDone)
+		interrors.Is(err, sql.ErrTxDone) ||
+		interrors.Is(err, sql.ErrConnDone)
 }

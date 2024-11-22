@@ -5,16 +5,15 @@ package state
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/canonical/sqlair"
-	"github.com/juju/errors"
 
 	corecharm "github.com/juju/juju/core/charm"
 	"github.com/juju/juju/domain"
 	"github.com/juju/juju/domain/application/charm"
 	applicationerrors "github.com/juju/juju/domain/application/errors"
 	internalerrors "github.com/juju/juju/internal/errors"
+	interrors "github.com/juju/juju/internal/errors"
 )
 
 // State represents a type for interacting with the underlying state.
@@ -42,7 +41,7 @@ WHERE uuid = $charmID.uuid;
 		return internalerrors.Errorf("failed to prepare query: %w", err)
 	}
 	if err := tx.Query(ctx, selectStmt, result).Get(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return applicationerrors.CharmNotFound
 		}
 		return internalerrors.Errorf("failed to check charm exists: %w", err)
@@ -72,18 +71,18 @@ AND charm_origin.revision = $charmReferenceNameRevision.revision
 	var result charmID
 	selectStmt, err := s.Prepare(selectQuery, result, ref)
 	if err != nil {
-		return "", fmt.Errorf("failed to prepare query: %w", err)
+		return "", interrors.Errorf("failed to prepare query: %w", err)
 	}
 	if err := tx.Query(ctx, selectStmt, ref).Get(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return "", nil
 		}
-		return "", fmt.Errorf("failed to check charm exists: %w", err)
+		return "", interrors.Errorf("failed to check charm exists: %w", err)
 	}
 
 	id, err := corecharm.ParseID(result.UUID)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse charm ID: %w", err)
+		return "", interrors.Errorf("failed to parse charm ID: %w", err)
 	}
 
 	return id, applicationerrors.CharmAlreadyExists
@@ -91,63 +90,63 @@ AND charm_origin.revision = $charmReferenceNameRevision.revision
 
 func (s *commonStateBase) setCharm(ctx context.Context, tx *sqlair.TX, id corecharm.ID, charm charm.Charm, archivePath string) error {
 	if err := s.setCharmState(ctx, tx, id, archivePath); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmMetadata(ctx, tx, id, charm.Metadata, charm.LXDProfile); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmTags(ctx, tx, id, charm.Metadata.Tags); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmCategories(ctx, tx, id, charm.Metadata.Categories); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmTerms(ctx, tx, id, charm.Metadata.Terms); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmRelations(ctx, tx, id, charm.Metadata); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmExtraBindings(ctx, tx, id, charm.Metadata.ExtraBindings); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmStorage(ctx, tx, id, charm.Metadata.Storage); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmDevices(ctx, tx, id, charm.Metadata.Devices); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmPayloads(ctx, tx, id, charm.Metadata.PayloadClasses); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmResources(ctx, tx, id, charm.Metadata.Resources); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmContainers(ctx, tx, id, charm.Metadata.Containers); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmActions(ctx, tx, id, charm.Actions); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmConfig(ctx, tx, id, charm.Config); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 
 	if err := s.setCharmManifest(ctx, tx, id, charm.Manifest); err != nil {
-		return errors.Trace(err)
+		return interrors.Capture(err)
 	}
 	return nil
 }
@@ -166,11 +165,11 @@ func (s *commonStateBase) setCharmState(
 	query := `INSERT INTO charm (*) VALUES ($setCharm.*);`
 	stmt, err := s.Prepare(query, data)
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, data).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm state: %w", err)
+		return interrors.Errorf("failed to insert charm state: %w", err)
 	}
 
 	return nil
@@ -185,17 +184,17 @@ func (s *commonStateBase) setCharmMetadata(
 ) error {
 	encodedMetadata, err := encodeMetadata(id, metadata, lxdProfile)
 	if err != nil {
-		return fmt.Errorf("failed to encode charm metadata: %w", err)
+		return interrors.Errorf("failed to encode charm metadata: %w", err)
 	}
 
 	query := `INSERT INTO charm_metadata (*) VALUES ($setCharmMetadata.*);`
 	stmt, err := s.Prepare(query, encodedMetadata)
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodedMetadata).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm metadata: %w", err)
+		return interrors.Errorf("failed to insert charm metadata: %w", err)
 	}
 
 	return nil
@@ -210,11 +209,11 @@ func (s *commonStateBase) setCharmTags(ctx context.Context, tx *sqlair.TX, id co
 	query := `INSERT INTO charm_tag (*) VALUES ($setCharmTag.*);`
 	stmt, err := s.Prepare(query, setCharmTag{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodeTags(id, tags)).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm tag: %w", err)
+		return interrors.Errorf("failed to insert charm tag: %w", err)
 	}
 
 	return nil
@@ -229,11 +228,11 @@ func (s *commonStateBase) setCharmCategories(ctx context.Context, tx *sqlair.TX,
 	query := `INSERT INTO charm_category (*) VALUES ($setCharmCategory.*);`
 	stmt, err := s.Prepare(query, setCharmCategory{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodeCategories(id, categories)).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm categories: %w", err)
+		return interrors.Errorf("failed to insert charm categories: %w", err)
 	}
 
 	return nil
@@ -248,11 +247,11 @@ func (s *commonStateBase) setCharmTerms(ctx context.Context, tx *sqlair.TX, id c
 	query := `INSERT INTO charm_term (*) VALUES ($setCharmTerm.*);`
 	stmt, err := s.Prepare(query, setCharmTerm{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodeTerms(id, terms)).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm terms: %w", err)
+		return interrors.Errorf("failed to insert charm terms: %w", err)
 	}
 
 	return nil
@@ -261,7 +260,7 @@ func (s *commonStateBase) setCharmTerms(ctx context.Context, tx *sqlair.TX, id c
 func (s *commonStateBase) setCharmRelations(ctx context.Context, tx *sqlair.TX, id corecharm.ID, metadata charm.Metadata) error {
 	encodedRelations, err := encodeRelations(id, metadata)
 	if err != nil {
-		return fmt.Errorf("failed to encode charm relations: %w", err)
+		return interrors.Errorf("failed to encode charm relations: %w", err)
 	}
 
 	// If there are no relations, we don't need to do anything.
@@ -272,11 +271,11 @@ func (s *commonStateBase) setCharmRelations(ctx context.Context, tx *sqlair.TX, 
 	query := `INSERT INTO charm_relation (*) VALUES ($setCharmRelation.*);`
 	stmt, err := s.Prepare(query, setCharmRelation{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodedRelations).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm relations: %w", err)
+		return interrors.Errorf("failed to insert charm relations: %w", err)
 	}
 
 	return nil
@@ -291,11 +290,11 @@ func (s *commonStateBase) setCharmExtraBindings(ctx context.Context, tx *sqlair.
 	query := `INSERT INTO charm_extra_binding (*) VALUES ($setCharmExtraBinding.*);`
 	stmt, err := s.Prepare(query, setCharmExtraBinding{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodeExtraBindings(id, extraBindings)).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm extra bindings: %w", err)
+		return interrors.Errorf("failed to insert charm extra bindings: %w", err)
 	}
 
 	return nil
@@ -309,17 +308,17 @@ func (s *commonStateBase) setCharmStorage(ctx context.Context, tx *sqlair.TX, id
 
 	encodedStorage, encodedProperties, err := encodeStorage(id, storage)
 	if err != nil {
-		return fmt.Errorf("failed to encode charm storage: %w", err)
+		return interrors.Errorf("failed to encode charm storage: %w", err)
 	}
 
 	storageQuery := `INSERT INTO charm_storage (*) VALUES ($setCharmStorage.*);`
 	storageStmt, err := s.Prepare(storageQuery, setCharmStorage{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, storageStmt, encodedStorage).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm storage: %w", err)
+		return interrors.Errorf("failed to insert charm storage: %w", err)
 	}
 
 	// Only insert properties if there are any.
@@ -327,11 +326,11 @@ func (s *commonStateBase) setCharmStorage(ctx context.Context, tx *sqlair.TX, id
 		propertiesQuery := `INSERT INTO charm_storage_property (*) VALUES ($setCharmStorageProperty.*);`
 		propertiesStmt, err := s.Prepare(propertiesQuery, setCharmStorageProperty{})
 		if err != nil {
-			return fmt.Errorf("failed to prepare query: %w", err)
+			return interrors.Errorf("failed to prepare query: %w", err)
 		}
 
 		if err := tx.Query(ctx, propertiesStmt, encodedProperties).Run(); err != nil {
-			return fmt.Errorf("failed to insert charm storage properties: %w", err)
+			return interrors.Errorf("failed to insert charm storage properties: %w", err)
 		}
 	}
 	return nil
@@ -346,11 +345,11 @@ func (s *commonStateBase) setCharmDevices(ctx context.Context, tx *sqlair.TX, id
 	query := `INSERT INTO charm_device (*) VALUES ($setCharmDevice.*);`
 	stmt, err := s.Prepare(query, setCharmDevice{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodeDevices(id, devices)).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm devices: %w", err)
+		return interrors.Errorf("failed to insert charm devices: %w", err)
 	}
 
 	return nil
@@ -365,11 +364,11 @@ func (s *commonStateBase) setCharmPayloads(ctx context.Context, tx *sqlair.TX, i
 	query := `INSERT INTO charm_payload (*) VALUES ($setCharmPayload.*);`
 	stmt, err := s.Prepare(query, setCharmPayload{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodePayloads(id, payloads)).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm payloads: %w", err)
+		return interrors.Errorf("failed to insert charm payloads: %w", err)
 	}
 
 	return nil
@@ -383,17 +382,17 @@ func (s *commonStateBase) setCharmResources(ctx context.Context, tx *sqlair.TX, 
 
 	encodedResources, err := encodeResources(id, resources)
 	if err != nil {
-		return fmt.Errorf("failed to encode charm resources: %w", err)
+		return interrors.Errorf("failed to encode charm resources: %w", err)
 	}
 
 	query := `INSERT INTO charm_resource (*) VALUES ($setCharmResource.*);`
 	stmt, err := s.Prepare(query, setCharmResource{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodedResources).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm resources: %w", err)
+		return interrors.Errorf("failed to insert charm resources: %w", err)
 	}
 
 	return nil
@@ -407,17 +406,17 @@ func (s *commonStateBase) setCharmContainers(ctx context.Context, tx *sqlair.TX,
 
 	encodedContainers, encodedMounts, err := encodeContainers(id, containers)
 	if err != nil {
-		return fmt.Errorf("failed to encode charm containers: %w", err)
+		return interrors.Errorf("failed to encode charm containers: %w", err)
 	}
 
 	containerQuery := `INSERT INTO charm_container (*) VALUES ($setCharmContainer.*);`
 	containerStmt, err := s.Prepare(containerQuery, setCharmContainer{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, containerStmt, encodedContainers).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm containers: %w", err)
+		return interrors.Errorf("failed to insert charm containers: %w", err)
 	}
 
 	// Only insert mounts if there are any.
@@ -425,11 +424,11 @@ func (s *commonStateBase) setCharmContainers(ctx context.Context, tx *sqlair.TX,
 		mountQuery := `INSERT INTO charm_container_mount (*) VALUES ($setCharmMount.*);`
 		mountStmt, err := s.Prepare(mountQuery, setCharmMount{})
 		if err != nil {
-			return fmt.Errorf("failed to prepare query: %w", err)
+			return interrors.Errorf("failed to prepare query: %w", err)
 		}
 
 		if err := tx.Query(ctx, mountStmt, encodedMounts).Run(); err != nil {
-			return fmt.Errorf("failed to insert charm container mounts: %w", err)
+			return interrors.Errorf("failed to insert charm container mounts: %w", err)
 		}
 	}
 
@@ -445,11 +444,11 @@ func (s *commonStateBase) setCharmActions(ctx context.Context, tx *sqlair.TX, id
 	query := `INSERT INTO charm_action (*) VALUES ($setCharmAction.*);`
 	stmt, err := s.Prepare(query, setCharmAction{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodeActions(id, actions)).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm actions: %w", err)
+		return interrors.Errorf("failed to insert charm actions: %w", err)
 	}
 
 	return nil
@@ -463,17 +462,17 @@ func (s *commonStateBase) setCharmConfig(ctx context.Context, tx *sqlair.TX, id 
 
 	encodedConfig, err := encodeConfig(id, config)
 	if err != nil {
-		return fmt.Errorf("failed to encode charm config: %w", err)
+		return interrors.Errorf("failed to encode charm config: %w", err)
 	}
 
 	query := `INSERT INTO charm_config (*) VALUES ($setCharmConfig.*);`
 	stmt, err := s.Prepare(query, setCharmConfig{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodedConfig).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm config: %w", err)
+		return interrors.Errorf("failed to insert charm config: %w", err)
 	}
 
 	return nil
@@ -487,17 +486,17 @@ func (s *commonStateBase) setCharmManifest(ctx context.Context, tx *sqlair.TX, i
 
 	encodedManifest, err := encodeManifest(id, manifest)
 	if err != nil {
-		return fmt.Errorf("failed to encode charm manifest: %w", err)
+		return interrors.Errorf("failed to encode charm manifest: %w", err)
 	}
 
 	query := `INSERT INTO charm_manifest_base (*) VALUES ($setCharmManifest.*);`
 	stmt, err := s.Prepare(query, setCharmManifest{})
 	if err != nil {
-		return fmt.Errorf("failed to prepare query: %w", err)
+		return interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, encodedManifest).Run(); err != nil {
-		return fmt.Errorf("failed to insert charm manifest: %w", err)
+		return interrors.Errorf("failed to insert charm manifest: %w", err)
 	}
 
 	return nil
@@ -518,28 +517,28 @@ WHERE charm_uuid = $charmID.uuid;
 
 	originStmt, err := s.Prepare(originQuery, charmOrigin{}, ident)
 	if err != nil {
-		return charm.CharmOrigin{}, fmt.Errorf("failed to prepare query: %w", err)
+		return charm.CharmOrigin{}, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	platformStmt, err := s.Prepare(platformQuery, charmPlatform{}, ident)
 	if err != nil {
-		return charm.CharmOrigin{}, fmt.Errorf("failed to prepare query: %w", err)
+		return charm.CharmOrigin{}, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var origin charmOrigin
 	if err := tx.Query(ctx, originStmt, ident).Get(&origin); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return charm.CharmOrigin{}, applicationerrors.CharmNotFound
 		}
-		return charm.CharmOrigin{}, fmt.Errorf("failed to get charm origin: %w", err)
+		return charm.CharmOrigin{}, interrors.Errorf("failed to get charm origin: %w", err)
 	}
 
 	var platform charmPlatform
 	if err := tx.Query(ctx, platformStmt, ident).Get(&platform); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return charm.CharmOrigin{}, applicationerrors.CharmNotFound
 		}
-		return charm.CharmOrigin{}, fmt.Errorf("failed to get charm platform: %w", err)
+		return charm.CharmOrigin{}, interrors.Errorf("failed to get charm platform: %w", err)
 	}
 
 	return decodeCharmOrigin(origin, platform)
@@ -554,23 +553,23 @@ func (s *commonStateBase) getCharm(ctx context.Context, tx *sqlair.TX, ident cha
 		err   error
 	)
 	if charm.Metadata, err = s.getMetadata(ctx, tx, ident); err != nil {
-		return charm, errors.Trace(err)
+		return charm, interrors.Capture(err)
 	}
 
 	if charm.Config, err = s.getCharmConfig(ctx, tx, ident); err != nil {
-		return charm, errors.Trace(err)
+		return charm, interrors.Capture(err)
 	}
 
 	if charm.Manifest, err = s.getCharmManifest(ctx, tx, ident); err != nil {
-		return charm, errors.Trace(err)
+		return charm, interrors.Capture(err)
 	}
 
 	if charm.Actions, err = s.getCharmActions(ctx, tx, ident); err != nil {
-		return charm, errors.Trace(err)
+		return charm, interrors.Capture(err)
 	}
 
 	if charm.LXDProfile, _, err = s.getCharmLXDProfile(ctx, tx, ident); err != nil {
-		return charm, errors.Trace(err)
+		return charm, interrors.Capture(err)
 	}
 	return charm, nil
 }
@@ -606,47 +605,47 @@ func (s *commonStateBase) getMetadata(ctx context.Context, tx *sqlair.TX, ident 
 
 	var err error
 	if metadata, err = s.getCharmMetadata(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if tags, err = s.getCharmTags(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if categories, err = s.getCharmCategories(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if terms, err = s.getCharmTerms(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if relations, err = s.getCharmRelations(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if extraBindings, err = s.getCharmExtraBindings(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if storage, err = s.getCharmStorage(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if devices, err = s.getCharmDevices(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if payloads, err = s.getCharmPayloads(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if resources, err = s.getCharmResources(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	if containers, err = s.getCharmContainers(ctx, tx, ident); err != nil {
-		return charm.Metadata{}, errors.Trace(err)
+		return charm.Metadata{}, interrors.Capture(err)
 	}
 
 	return decodeMetadata(metadata, decodeMetadataArgs{
@@ -678,15 +677,15 @@ ORDER BY array_index ASC, nested_array_index ASC;
 
 	stmt, err := s.Prepare(query, charmManifest{}, ident)
 	if err != nil {
-		return charm.Manifest{}, fmt.Errorf("failed to prepare query: %w", err)
+		return charm.Manifest{}, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var manifests []charmManifest
 	if err := tx.Query(ctx, stmt, ident).GetAll(&manifests); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return charm.Manifest{}, applicationerrors.CharmNotFound
 		}
-		return charm.Manifest{}, fmt.Errorf("failed to get charm manifest: %w", err)
+		return charm.Manifest{}, interrors.Errorf("failed to get charm manifest: %w", err)
 	}
 
 	return decodeManifest(manifests)
@@ -715,26 +714,26 @@ WHERE uuid = $charmID.uuid;
 
 	charmStmt, err := s.Prepare(charmQuery, ident)
 	if err != nil {
-		return nil, -1, fmt.Errorf("failed to prepare charm query: %w", err)
+		return nil, -1, interrors.Errorf("failed to prepare charm query: %w", err)
 	}
 	var profile charmLXDProfile
 	lxdProfileStmt, err := s.Prepare(lxdProfileQuery, profile, ident)
 	if err != nil {
-		return nil, -1, fmt.Errorf("failed to prepare lxd profile query: %w", err)
+		return nil, -1, interrors.Errorf("failed to prepare lxd profile query: %w", err)
 	}
 
 	if err := tx.Query(ctx, charmStmt, ident).Get(&ident); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return nil, -1, applicationerrors.CharmNotFound
 		}
-		return nil, -1, fmt.Errorf("failed to get charm: %w", err)
+		return nil, -1, interrors.Errorf("failed to get charm: %w", err)
 	}
 
 	if err := tx.Query(ctx, lxdProfileStmt, ident).Get(&profile); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return nil, -1, applicationerrors.LXDProfileNotFound
 		}
-		return nil, -1, fmt.Errorf("failed to get charm lxd profile: %w", err)
+		return nil, -1, interrors.Errorf("failed to get charm lxd profile: %w", err)
 	}
 
 	// TODO - figure out why this is happening
@@ -765,26 +764,26 @@ WHERE charm_uuid = $charmID.uuid;
 
 	charmStmt, err := s.Prepare(charmQuery, ident)
 	if err != nil {
-		return charm.Config{}, fmt.Errorf("failed to prepare charm query: %w", err)
+		return charm.Config{}, interrors.Errorf("failed to prepare charm query: %w", err)
 	}
 	configStmt, err := s.Prepare(configQuery, charmConfig{}, ident)
 	if err != nil {
-		return charm.Config{}, fmt.Errorf("failed to prepare config query: %w", err)
+		return charm.Config{}, interrors.Errorf("failed to prepare config query: %w", err)
 	}
 
 	if err := tx.Query(ctx, charmStmt, ident).Get(&ident); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return charm.Config{}, applicationerrors.CharmNotFound
 		}
-		return charm.Config{}, fmt.Errorf("failed to get charm: %w", err)
+		return charm.Config{}, interrors.Errorf("failed to get charm: %w", err)
 	}
 
 	var configs []charmConfig
 	if err := tx.Query(ctx, configStmt, ident).GetAll(&configs); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return charm.Config{}, nil
 		}
-		return charm.Config{}, fmt.Errorf("failed to get charm config: %w", err)
+		return charm.Config{}, interrors.Errorf("failed to get charm config: %w", err)
 	}
 
 	return decodeConfig(configs)
@@ -809,26 +808,26 @@ WHERE charm_uuid = $charmID.uuid;
 
 	charmStmt, err := s.Prepare(charmQuery, ident)
 	if err != nil {
-		return charm.Actions{}, fmt.Errorf("failed to prepare charm query: %w", err)
+		return charm.Actions{}, interrors.Errorf("failed to prepare charm query: %w", err)
 	}
 	actionsStmt, err := s.Prepare(actionQuery, charmAction{}, ident)
 	if err != nil {
-		return charm.Actions{}, fmt.Errorf("failed to prepare action query: %w", err)
+		return charm.Actions{}, interrors.Errorf("failed to prepare action query: %w", err)
 	}
 
 	if err := tx.Query(ctx, charmStmt, ident).Get(&ident); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return charm.Actions{}, applicationerrors.CharmNotFound
 		}
-		return charm.Actions{}, fmt.Errorf("failed to get charm: %w", err)
+		return charm.Actions{}, interrors.Errorf("failed to get charm: %w", err)
 	}
 
 	var actions []charmAction
 	if err := tx.Query(ctx, actionsStmt, ident).GetAll(&actions); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return charm.Actions{}, nil
 		}
-		return charm.Actions{}, fmt.Errorf("failed to get charm actions: %w", err)
+		return charm.Actions{}, interrors.Errorf("failed to get charm actions: %w", err)
 	}
 
 	return decodeActions(actions), nil
@@ -845,14 +844,14 @@ WHERE uuid = $charmID.uuid;
 	var metadata charmMetadata
 	stmt, err := s.Prepare(query, metadata, ident)
 	if err != nil {
-		return metadata, fmt.Errorf("failed to prepare query: %w", err)
+		return metadata, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	if err := tx.Query(ctx, stmt, ident).Get(&metadata); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return metadata, applicationerrors.CharmNotFound
 		}
-		return metadata, fmt.Errorf("failed to select charm metadata: %w", err)
+		return metadata, interrors.Errorf("failed to select charm metadata: %w", err)
 	}
 
 	return metadata, nil
@@ -874,15 +873,15 @@ ORDER BY array_index ASC;
 `
 	stmt, err := s.Prepare(query, charmTag{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmTag
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm tags: %w", err)
+		return nil, interrors.Errorf("failed to select charm tags: %w", err)
 	}
 
 	return result, nil
@@ -904,15 +903,15 @@ ORDER BY array_index ASC;
 `
 	stmt, err := s.Prepare(query, charmCategory{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmCategory
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm categories: %w", err)
+		return nil, interrors.Errorf("failed to select charm categories: %w", err)
 	}
 
 	return result, nil
@@ -934,15 +933,15 @@ ORDER BY array_index ASC;
 `
 	stmt, err := s.Prepare(query, charmTerm{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmTerm
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm terms: %w", err)
+		return nil, interrors.Errorf("failed to select charm terms: %w", err)
 	}
 
 	return result, nil
@@ -961,15 +960,15 @@ WHERE charm_uuid = $charmID.uuid;
 	`
 	stmt, err := s.Prepare(query, charmRelation{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmRelation
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm relations: %w", err)
+		return nil, interrors.Errorf("failed to select charm relations: %w", err)
 	}
 
 	return result, nil
@@ -990,15 +989,15 @@ WHERE charm_uuid = $charmID.uuid;
 
 	stmt, err := s.Prepare(query, charmExtraBinding{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmExtraBinding
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm extra bindings: %w", err)
+		return nil, interrors.Errorf("failed to select charm extra bindings: %w", err)
 	}
 
 	return result, nil
@@ -1018,15 +1017,15 @@ ORDER BY property_index ASC;
 
 	stmt, err := s.Prepare(query, charmStorage{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmStorage
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm storage: %w", err)
+		return nil, interrors.Errorf("failed to select charm storage: %w", err)
 	}
 
 	return result, nil
@@ -1044,15 +1043,15 @@ WHERE charm_uuid = $charmID.uuid;
 
 	stmt, err := s.Prepare(query, charmDevice{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmDevice
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm device: %w", err)
+		return nil, interrors.Errorf("failed to select charm device: %w", err)
 	}
 
 	return result, nil
@@ -1070,15 +1069,15 @@ WHERE charm_uuid = $charmID.uuid;
 
 	stmt, err := s.Prepare(query, charmPayload{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmPayload
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm payload: %w", err)
+		return nil, interrors.Errorf("failed to select charm payload: %w", err)
 	}
 
 	return result, nil
@@ -1096,15 +1095,15 @@ WHERE charm_uuid = $charmID.uuid;
 
 	stmt, err := s.Prepare(query, charmResource{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmResource
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm payload: %w", err)
+		return nil, interrors.Errorf("failed to select charm payload: %w", err)
 	}
 
 	return result, nil
@@ -1123,15 +1122,15 @@ ORDER BY array_index ASC;
 
 	stmt, err := s.Prepare(query, charmContainer{}, ident)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare query: %w", err)
+		return nil, interrors.Errorf("failed to prepare query: %w", err)
 	}
 
 	var result []charmContainer
 	if err := tx.Query(ctx, stmt, ident).GetAll(&result); err != nil {
-		if errors.Is(err, sqlair.ErrNoRows) {
+		if interrors.Is(err, sqlair.ErrNoRows) {
 			return result, nil
 		}
-		return nil, fmt.Errorf("failed to select charm container: %w", err)
+		return nil, interrors.Errorf("failed to select charm container: %w", err)
 	}
 
 	return result, nil
