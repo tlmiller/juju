@@ -179,6 +179,26 @@ import errors "github.com/juju/errors"
 + coreerrors.NotImplemented
 
 @@
+var errors identifier
+var fmtStr expression
+@@
+import errors "github.com/juju/errors"
++import coreerrors "github.com/juju/juju/core/errors"
++import interrors "github.com/juju/juju/internal/errors"
+
+-errors.NotProvisionedf(fmtStr, ...)
++interrors.Errorf(fmtStr + " %w", ..., coreerrors.NotProvisioned)
+
+@@
+var errors identifier
+@@
+import errors "github.com/juju/errors"
++import coreerrors "github.com/juju/juju/core/errors"
+
+- errors.NotProvisioned
++ coreerrors.NotProvisioned
+
+@@
 var errors, interrors identifier
 var x expression
 @@
@@ -187,6 +207,15 @@ import interrors "github.com/juju/juju/internal/errors"
 
 -interrors.Errorf(..., errors.Hide(x))
 +interrors.Errorf(...).Add(x)
+
+@@
+var errors identifier
+var x expression
+@@
+import errors "github.com/juju/errors"
+
+-errors.Cause(x)
++x
 
 @@
 var errors, x identifier
