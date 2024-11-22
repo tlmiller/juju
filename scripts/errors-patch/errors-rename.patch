@@ -3,6 +3,12 @@
 var errors, x identifier
 @@
 -import errors "github.com/juju/errors"
+
+errors.x
+
+@@
+var x identifier
+@@
 -import interrors "github.com/juju/juju/internal/errors"
 +import "github.com/juju/juju/internal/errors"
 
