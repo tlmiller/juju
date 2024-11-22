@@ -200,16 +200,6 @@ import errors "github.com/juju/errors"
 + coreerrors.NotProvisioned
 
 @@
-var errors, interrors identifier
-var x expression
-@@
-import errors "github.com/juju/errors"
-import interrors "github.com/juju/juju/internal/errors"
-
--interrors.Errorf(..., errors.Hide(x))
-+interrors.Errorf(...).Add(x)
-
-@@
 var errors identifier
 var x expression
 @@
@@ -230,8 +220,26 @@ import errors "github.com/juju/errors"
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import interrors "github.com/juju/juju/internal/errors"
 
 -errors.Is(...)
 +interrors.Is(...)
+
+@@
+var errors identifier
+@@
+import errors "github.com/juju/errors"
++import interrors "github.com/juju/juju/internal/errors"
+
+-errors.Errorf(...)
++interrors.Errorf(...)
+
+@@
+var errors identifier
+var x expression
+@@
+import errors "github.com/juju/errors"
++import interrors "github.com/juju/juju/internal/errors"
+
+-interrors.Errorf(..., errors.Hide(x))
++interrors.Errorf(...).Add(x)
