@@ -3,7 +3,6 @@
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import interrors "github.com/juju/juju/internal/errors"
 
 -errors.Trace(...)
@@ -13,7 +12,6 @@ import errors "github.com/juju/errors"
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import interrors "github.com/juju/juju/internal/errors"
 
 -errors.New(...)
@@ -23,7 +21,6 @@ import errors "github.com/juju/errors"
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import interrors "github.com/juju/juju/internal/errors"
 
 -errors.ConstError(...)
@@ -33,7 +30,6 @@ import errors "github.com/juju/errors"
 var fmt identifier
 @@
 import fmt "fmt"
-
 +import interrors "github.com/juju/juju/internal/errors"
 
 -fmt.Errorf(...)
@@ -45,7 +41,6 @@ var x expression
 var fmtStr expression
 @@
 import errors "github.com/juju/errors"
-
 +import interrors "github.com/juju/juju/internal/errors"
 
 -errors.Annotatef(x, fmtStr, ...)
@@ -56,7 +51,6 @@ var errors identifier
 var err, errMsg expression
 @@
 import errors "github.com/juju/errors"
-
 +import interrors "github.com/juju/juju/internal/errors"
 
 -errors.Annotate(err, errMsg)
@@ -67,7 +61,6 @@ var errors identifier
 var errMsg expression
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 +import interrors "github.com/juju/juju/internal/errors"
 
@@ -79,7 +72,6 @@ var errors identifier
 var fmtStr expression
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 +import interrors "github.com/juju/juju/internal/errors"
 
@@ -90,7 +82,6 @@ import errors "github.com/juju/errors"
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 
 - errors.NotSupported
@@ -101,7 +92,6 @@ var errors identifier
 var fmtStr expression
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 +import interrors "github.com/juju/juju/internal/errors"
 
@@ -112,7 +102,6 @@ import errors "github.com/juju/errors"
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 
 - errors.NotFound
@@ -123,7 +112,6 @@ var errors identifier
 var fmtStr expression
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 +import interrors "github.com/juju/juju/internal/errors"
 
@@ -135,7 +123,6 @@ var errors identifier
 var fmtStr expression
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 +import interrors "github.com/juju/juju/internal/errors"
 
@@ -146,7 +133,6 @@ import errors "github.com/juju/errors"
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 
 - errors.NotValid
@@ -157,7 +143,6 @@ var errors identifier
 var fmtStr expression
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 +import interrors "github.com/juju/juju/internal/errors"
 
@@ -168,7 +153,6 @@ import errors "github.com/juju/errors"
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 
 - errors.AlreadyExists
@@ -179,7 +163,6 @@ var errors identifier
 var fmtStr expression
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 +import interrors "github.com/juju/juju/internal/errors"
 
@@ -190,7 +173,6 @@ import errors "github.com/juju/errors"
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 
 - errors.NotImplemented
@@ -212,7 +194,6 @@ import errors "github.com/juju/errors"
 var errors identifier
 @@
 import errors "github.com/juju/errors"
-
 +import coreerrors "github.com/juju/juju/core/errors"
 
 - errors.NotProvisioned
@@ -223,7 +204,6 @@ var errors, interrors identifier
 var x expression
 @@
 import errors "github.com/juju/errors"
-
 import interrors "github.com/juju/juju/internal/errors"
 
 -interrors.Errorf(..., errors.Hide(x))
@@ -237,34 +217,21 @@ import errors "github.com/juju/errors"
 
 -errors.Cause(x)
 +x
-
 @@
 var errors identifier
 @@
--import errors "github.com/juju/errors"
-
-+ import interrors "github.com/juju/juju/internal/errors"
-
--errors.Is(...)
-+interrors.Is(...)
-
-@@
-var errors identifier
-@@
--import errors "github.com/juju/errors"
-
+import errors "github.com/juju/errors"
 + import interrors "github.com/juju/juju/internal/errors"
 
 -errors.As(...)
 +interrors.As(...)
 
 @@
-var errors, x identifier
+var errors identifier
 @@
-- import errors "github.com/juju/errors"
+import errors "github.com/juju/errors"
 
-- import interrors "github.com/juju/juju/internal/errors"
-+ import "github.com/juju/juju/internal/errors"
++import interrors "github.com/juju/juju/internal/errors"
 
--interrors.x
-+errors.x
+-errors.Is(...)
++interrors.Is(...)
