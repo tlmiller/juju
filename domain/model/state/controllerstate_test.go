@@ -388,7 +388,7 @@ func (m *stateSuite) TestCreateModelWithInvalidCloudRegion(c *gc.C) {
 			SecretBackend: juju.BackendName,
 		},
 	)
-	c.Assert(err, jc.ErrorIs, errors.NotFound)
+	c.Assert(err, jc.ErrorIs, clouderrors.NotFound)
 }
 
 func (m *stateSuite) TestCreateWithEmptyRegion(c *gc.C) {
@@ -1539,10 +1539,11 @@ func (m *stateSuite) createTestModel(c *gc.C, modelSt *State, name string, creat
 // TestCloudSupportsAuthTypeTrue is asserting the happy path that for a valid
 // cloud and supported auth type we get back true with no errors.
 func (s *stateSuite) TestCloudSupportsAuthTypeTrue(c *gc.C) {
+	st := NewState(s.TxnRunnerFactory())
 	fakeCloud := cloud.Cloud{
 		Name:             "fluffy",
 		Type:             "ec2",
-		AuthTypes:        []cloud.AuthType{cloud.AccessKeyAuthType, cloud.UserPassAuthType},
+		AuthTypes:        []cloud.AuthType{cloud.EmptyAuthType},
 		Endpoint:         "https://endpoint",
 		IdentityEndpoint: "https://identity-endpoint",
 		StorageEndpoint:  "https://storage-endpoint",
@@ -1562,13 +1563,7 @@ func (s *stateSuite) TestCloudSupportsAuthTypeTrue(c *gc.C) {
 		IsControllerCloud: false,
 	}
 	s.insertCloud(c, fakeCloud)
-
-	var supports bool
-	err := s.TxnRunner().Txn(context.Background(), func(ctx context.Context, tx *sqlair.TX) error {
-		s, err := CloudSupportsAuthType(context.Background(), tx, fakeCloud.Name, cloud.UserPassAuthType)
-		supports = s
-		return err
-	})
+	supports, err := st.IsAuthTypeAvailableInCloud(context.Background(), fakeCloud.Name, cloud.EmptyAuthType)
 	c.Check(err, jc.ErrorIsNil)
 	c.Check(supports, jc.IsTrue)
 }
@@ -1576,6 +1571,8 @@ func (s *stateSuite) TestCloudSupportsAuthTypeTrue(c *gc.C) {
 // TestCloudSupportsAuthTypeFalse is asserting the happy path that for a valid
 // cloud and a non supported auth type we get back false with no errors.
 func (s *stateSuite) TestCloudSupportsAuthTypeFalse(c *gc.C) {
+	st := NewState(s.TxnRunnerFactory())
+
 	fakeCloud := cloud.Cloud{
 		Name:             "fluffy",
 		Type:             "ec2",
@@ -1600,27 +1597,83 @@ func (s *stateSuite) TestCloudSupportsAuthTypeFalse(c *gc.C) {
 	}
 	s.insertCloud(c, fakeCloud)
 
-	var supports bool
-	err := s.TxnRunner().Txn(context.Background(), func(ctx context.Context, tx *sqlair.TX) error {
-		s, err := CloudSupportsAuthType(context.Background(), tx, fakeCloud.Name, cloud.ClientCertificateAuthType)
-		supports = s
-		return err
-	})
+	supports, err := st.IsAuthTypeAvailableInCloud(context.Background(), fakeCloud.Name, cloud.EmptyAuthType)
+
 	c.Check(err, jc.ErrorIsNil)
 	c.Check(supports, jc.IsFalse)
+}
+
+// TestCloudSupportsEmptyAuthTypeWithoutCert is asserting the happy path that for a valid
+// cloud with no certs but supports empty auth type we get back true with no errors.
+func (s *stateSuite) TestCloudSupportsEmptyAuthTypeWithoutCert(c *gc.C) {
+	st := NewState(s.TxnRunnerFactory())
+	fakeCloud := cloud.Cloud{
+		Name:             "fluffy",
+		Type:             "ec2",
+		AuthTypes:        []cloud.AuthType{cloud.EmptyAuthType},
+		Endpoint:         "https://endpoint",
+		IdentityEndpoint: "https://identity-endpoint",
+		StorageEndpoint:  "https://storage-endpoint",
+		Regions: []cloud.Region{{
+			Name:             "region1",
+			Endpoint:         "http://region-endpoint1",
+			IdentityEndpoint: "http://region-identity-endpoint1",
+			StorageEndpoint:  "http://region-identity-endpoint1",
+		}, {
+			Name:             "region2",
+			Endpoint:         "http://region-endpoint2",
+			IdentityEndpoint: "http://region-identity-endpoint2",
+			StorageEndpoint:  "http://region-identity-endpoint2",
+		}},
+		SkipTLSVerify:     true,
+		IsControllerCloud: false,
+	}
+	s.insertCloud(c, fakeCloud)
+	supports, err := st.IsAuthTypeAvailableInCloud(context.Background(), fakeCloud.Name, cloud.EmptyAuthType)
+	c.Check(err, jc.ErrorIsNil)
+	c.Check(supports, jc.IsTrue)
 }
 
 // TestCloudSupportsAuthTypeCloudNotFound is checking to that if we ask if a
 // cloud supports an auth type and the cloud doesn't exist we get back a
 // [clouderrors.NotFound] error.
 func (s *stateSuite) TestCloudSupportsAuthTypeCloudNotFound(c *gc.C) {
-	var supports bool
-	err := s.TxnRunner().Txn(context.Background(), func(ctx context.Context, tx *sqlair.TX) error {
-		s, err := CloudSupportsAuthType(context.Background(), tx, "no-exist", cloud.AuthType("no-exist"))
-		supports = s
-		return err
-	})
-
+	st := NewState(s.TxnRunnerFactory())
+	supports, err := st.IsAuthTypeAvailableInCloud(context.Background(), "no-exist", cloud.EmptyAuthType)
 	c.Assert(err, jc.ErrorIs, clouderrors.NotFound)
+	c.Check(supports, jc.IsFalse)
+}
+
+// TestCloudSupportsAuthTypeNotFound is checking to that if we ask if a
+// cloud supports an auth type and the auth type doesn't exist we get back a
+// [modelerrors.AuthTypeDoesNotExist] error.
+func (s *stateSuite) TestCloudSupportsAuthTypeNotFound(c *gc.C) {
+	st := NewState(s.TxnRunnerFactory())
+
+	fakeCloud := cloud.Cloud{
+		Name:             "fluffy",
+		Type:             "ec2",
+		AuthTypes:        []cloud.AuthType{cloud.AccessKeyAuthType, cloud.UserPassAuthType},
+		Endpoint:         "https://endpoint",
+		IdentityEndpoint: "https://identity-endpoint",
+		StorageEndpoint:  "https://storage-endpoint",
+		Regions: []cloud.Region{{
+			Name:             "region1",
+			Endpoint:         "http://region-endpoint1",
+			IdentityEndpoint: "http://region-identity-endpoint1",
+			StorageEndpoint:  "http://region-identity-endpoint1",
+		}, {
+			Name:             "region2",
+			Endpoint:         "http://region-endpoint2",
+			IdentityEndpoint: "http://region-identity-endpoint2",
+			StorageEndpoint:  "http://region-identity-endpoint2",
+		}},
+		CACertificates:    []string{"cert1", "cert2"},
+		SkipTLSVerify:     true,
+		IsControllerCloud: false,
+	}
+	s.insertCloud(c, fakeCloud)
+	supports, err := st.IsAuthTypeAvailableInCloud(context.Background(), fakeCloud.Name, cloud.AuthType("no-exist"))
+	c.Assert(err, jc.ErrorIs, modelerrors.AuthTypeDoesNotExist)
 	c.Check(supports, jc.IsFalse)
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/juju/errors"
 
+	"github.com/juju/juju/cloud"
 	"github.com/juju/juju/core/credential"
 	"github.com/juju/juju/core/life"
 	coremodel "github.com/juju/juju/core/model"
@@ -338,4 +339,12 @@ func (d *dummyState) ListAllModelSummaries(_ context.Context) ([]coremodel.Model
 		})
 	}
 	return rval, nil
+}
+
+func (d *dummyState) IsAuthTypeAvailableInCloud(
+	ctx context.Context,
+	cloudName string,
+	authType cloud.AuthType,
+) (bool, error) {
+	return true, nil
 }
