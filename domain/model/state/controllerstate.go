@@ -13,6 +13,7 @@ import (
 	"github.com/juju/juju/cloud"
 	"github.com/juju/juju/core/credential"
 	"github.com/juju/juju/core/database"
+	coreerrors "github.com/juju/juju/core/errors"
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/core/permission"
 	"github.com/juju/juju/core/user"
@@ -856,7 +857,7 @@ func (s *State) GetModelTypes(ctx context.Context) ([]coremodel.ModelType, error
 func (s *State) ListAllModels(ctx context.Context) ([]coremodel.Model, error) {
 	db, err := s.DB()
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.Capture(err)
 	}
 
 	modelStmt, err := s.Prepare(`SELECT &dbModel.* FROM v_model`, dbModel{})
@@ -1509,7 +1510,7 @@ AND cr.name = $dbName.name
 		}
 
 		if err := tx.Query(ctx, stmt, modelUUID, cloudRegionName).Get(&cloudRegionUUID); errors.Is(err, sqlair.ErrNoRows) {
-			return errors.Errorf("%w cloud region %q for model uuid %q", errors.NotFound, region, uuid)
+			return errors.Errorf("%w cloud region %q for model uuid %q", clouderrors.NotFound, region, uuid)
 		} else if err != nil {
 			return errors.Errorf("getting cloud region %q uuid for model %q: %w", region, uuid, err)
 		}
@@ -1539,9 +1540,8 @@ AND cloud_region_uuid IS NULL
 		return errors.Capture(err)
 	} else if num != 1 {
 		return errors.Errorf(
-			"model %q already has a cloud region set%w",
+			"model %q already has a cloud region set",
 			uuid,
-			errors.Hide(errors.AlreadyExists),
 		)
 	}
 	return nil
@@ -1590,72 +1590,6 @@ func (s *State) UpdateCredential(
 	})
 }
 
-// CloudSupportsAuthType allows the caller to ask if a given auth type is
-// currently supported by the cloud named by cloudName. If no cloud is found for
-// the provided name an error matching [clouderrors.NotFound] is returned.
-func CloudSupportsAuthType(
-	ctx context.Context,
-	tx *sqlair.TX,
-	cloudName string,
-	authType cloud.AuthType,
-) (bool, error) {
-
-	cloudID := cloudID{
-		Name: cloudName,
-	}
-
-	cloudStmt := `
-SELECT &cloudID.uuid
-FROM cloud
-WHERE cloud.name = $cloudID.name
-`
-	selectCloudStmt, err := sqlair.Prepare(cloudStmt, cloudID)
-	if err != nil {
-		return false, errors.Capture(err)
-	}
-
-	err = tx.Query(ctx, selectCloudStmt, cloudID).Get(&cloudID)
-	if errors.Is(err, sqlair.ErrNoRows) {
-		return false, errors.Errorf("%w %q", clouderrors.NotFound, cloudName)
-	} else if err != nil {
-		return false, errors.Errorf(
-			"determining if cloud %q supports auth type %q: %w",
-			cloudName, authType.String(), err,
-		)
-	}
-
-	authTypeStmt := `
-SELECT auth_type.type AS &M.supports
-FROM cloud
-INNER JOIN cloud_auth_type
-ON cloud.uuid = cloud_auth_type.cloud_uuid
-INNER JOIN auth_type
-ON cloud_auth_type.auth_type_id = auth_type.id
-WHERE cloud.uuid = $M.cloudUUID
-AND auth_type.type = $M.authType
-`
-	selectCloudAuthTypeStmt, err := sqlair.Prepare(authTypeStmt, sqlair.M{})
-	if err != nil {
-		return false, errors.Capture(err)
-	}
-
-	m := sqlair.M{
-		"cloudUUID": cloudID.UUID,
-		"authType":  authType.String(),
-	}
-	err = tx.Query(ctx, selectCloudAuthTypeStmt, m).Get(&m)
-	if errors.Is(err, sqlair.ErrNoRows) {
-		return false, nil
-	} else if err != nil {
-		return false, errors.Errorf(
-			"determining if cloud %q supports auth type %q: %w",
-			cloudName, authType.String(), err,
-		)
-	}
-
-	return true, nil
-}
-
 // updateCredential is responsible for updating the cloud credential in use
 // by model. If the cloud credential is not found an error that satisfies
 // errors.NotFound is returned.
@@ -1700,7 +1634,7 @@ AND cc.name = $dbCredKey.cloud_credential_name
 	err = tx.Query(ctx, cloudCredUUIDStmt, selectArgs).Get(&result)
 	if errors.Is(err, sqlair.ErrNoRows) {
 		return errors.Errorf(
-			"%w cloud credential %q%w",
+			"%w cloud credential %q",
 			coreerrors.NotFound, key,
 		).Add(err)
 	} else if err != nil {
@@ -1791,4 +1725,85 @@ AND    ot.type = $dbPermission.object_type
 		return errors.Errorf("creating model permission metadata, expected 1 row to be inserted, got %d", num)
 	}
 	return nil
+}
+
+type dbCloudSupportedAuth struct {
+	CloudName string `db:"name"`
+	AuthType  string `db:"auth_type"`
+	Supports  string `db:"supports"`
+}
+
+func (s *State) IsAuthTypeAvailableInCloud(
+	ctx context.Context,
+	cloudName string,
+	authType cloud.AuthType,
+) (bool, error) {
+
+	db, err := s.DB()
+	if err != nil {
+		return false, errors.Capture(err)
+	}
+
+	// Define the struct for query parameters and outcome
+	supportsAuth := dbCloudSupportedAuth{
+		CloudName: cloudName,
+		AuthType:  authType.String(),
+	}
+
+	cloudExistStmt, err := s.Prepare(`
+	SELECT true AS &dbCloudSupportedAuth.supports
+	FROM cloud
+	WHERE cloud.name = $dbCloudSupportedAuth.name
+	`, supportsAuth)
+	if err != nil {
+		return false, errors.Capture(err)
+	}
+
+	authTypeExistStmt, err := s.Prepare(`
+	SELECT true AS &dbCloudSupportedAuth.supports
+	FROM auth_type
+	WHERE auth_type.type = $dbCloudSupportedAuth.auth_type
+	`, supportsAuth)
+	if err != nil {
+		return false, errors.Capture(err)
+	}
+
+	authTypeStmt, err := s.Prepare(`
+	SELECT true AS &dbCloudSupportedAuth.supports
+	FROM v_cloud_auth
+	WHERE name = $dbCloudSupportedAuth.name
+	AND auth_type LIKE '%' || $dbCloudSupportedAuth.auth_type || '%'
+	`, supportsAuth)
+	if err != nil {
+		return false, errors.Capture(err)
+	}
+
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		if err := tx.Query(ctx, cloudExistStmt, supportsAuth).Run(); errors.Is(err, sql.ErrNoRows) {
+			return clouderrors.NotFound
+		}
+
+		if err := tx.Query(ctx, authTypeExistStmt, supportsAuth).Run(); errors.Is(err, sql.ErrNoRows) {
+			return modelerrors.AuthTypeDoesNotExist
+		}
+
+		if err := tx.Query(ctx, authTypeStmt, supportsAuth).Run(); errors.Is(err, sqlair.ErrNoRows) {
+			return modelerrors.AuthTypeNotFoundInCloud
+		}
+		return err
+	})
+
+	if err != nil {
+		// input cloud does not contain input auth type.
+		if errors.Is(err, modelerrors.AuthTypeNotFoundInCloud) {
+			return false, nil
+		}
+
+		return false, errors.Errorf(
+			"checking if cloud %q supports auth type %q: %w",
+			cloudName, authType.String(), err,
+		)
+	}
+
+	return true, nil
 }

@@ -40,4 +40,17 @@ const (
 	// a user on a particular model cannot be found. This does not mean the user
 	// does not exist.
 	UserNotFoundOnModel = errors.ConstError("user not found on model")
+
+	// AuthTypeDoesNotExist describes an error that occurs when an
+	// authentication type does not exist.
+	AuthTypeDoesNotExist = errors.ConstError("auth type not found")
+
+	// AuthTypeNotFoundInCloud describes an error that occurs when an
+	// authentication type in a particular cloud cannot be found. This does
+	// not mean that the cloud or auth type does not exist.
+	AuthTypeNotFoundInCloud = errors.ConstError("auth type not found in cloud")
+
+	// NoCredentialSupplied describes an error that occurs when no credentials
+	// are provided and the cloud requires non-empty credentials.
+	NoCredentialSupplied = errors.ConstError("no credentials provided for cloud that require non-empty credentials")
 )

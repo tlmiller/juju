@@ -104,6 +104,8 @@ type State interface {
 
 	// UpdateCredential updates a model's cloud credential.
 	UpdateCredential(context.Context, coremodel.UUID, credential.Key) error
+
+	IsAuthTypeAvailableInCloud(ctx context.Context, cloudName string, authType cloud.AuthType) (bool, error)
 }
 
 // ModelDeleter is an interface for deleting models.
@@ -298,6 +300,33 @@ func (s *Service) createModel(
 			modelType,
 			args.Name,
 		)
+	}
+
+	if args.Credential.IsZero() {
+		ctrlModel, err := s.st.GetControllerModel(ctx)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"getting controller model information: %w", err,
+			)
+		}
+
+		// If this is the same owner as the controller model and the same cloud we
+		// can re-use the same cloud credential as the controller model.
+		if args.Owner == ctrlModel.Owner && args.Cloud == ctrlModel.Cloud {
+			args.Credential = ctrlModel.Credential
+		}
+
+		// If credential is still empty, we need to check if cloud supports empty credentials
+		if args.Credential.IsZero() {
+			modelCloudName := args.Cloud
+			isAuthTypeAvailableInCloud, err := s.st.IsAuthTypeAvailableInCloud(ctx, modelCloudName, cloud.EmptyAuthType)
+			if err != nil {
+				return nil, fmt.Errorf("getting isAuthTypeAvailableInCloud status from state %v: %w", cloud.EmptyAuthType, err)
+			}
+			if !isAuthTypeAvailableInCloud {
+				return nil, fmt.Errorf("cloud %q %w", modelCloudName, modelerrors.NoCredentialSupplied)
+			}
+		}
 	}
 
 	agentVersion := args.AgentVersion
